@@ -7,6 +7,7 @@ import {
   FileCheck2,
   FileText,
   Gavel,
+  LayoutDashboard,
   Search,
   Settings,
   ShieldCheck,
@@ -25,6 +26,7 @@ import { ROLE_LABELS } from '@/lib/users'
  * остальным ролям API отдаёт 403).
  */
 const NAV_ITEMS = [
+  { to: '/', label: 'Обзор', icon: LayoutDashboard, end: true },
   { to: '/tenders', label: 'Тендеры', icon: FileText },
   { to: '/auctions', label: 'Аукционы', icon: Gavel },
   { to: '/contracts', label: 'Контракты', icon: FileCheck2 },
@@ -209,6 +211,9 @@ export function AppLayout() {
                   <NavLink
                     key={item.to}
                     to={item.to}
+                    // Корень активен только на самом корне: без end пункт
+                    // «Обзор» подсвечивался бы на всех вложенных роутах.
+                    end={'end' in item && item.end}
                     className={({ isActive }) =>
                       cn(
                         'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',

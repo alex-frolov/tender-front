@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { ExportButton } from '@/features/dashboard/ExportButton'
 import { useCursorPage, type CursorPageData } from '@/hooks/useCursorPage'
 import { apiErrorMessage } from '@/lib/errors'
 import {
@@ -287,20 +288,24 @@ export function TendersPage() {
             Каталог тендеров с фильтрами и курсорной пагинацией.
           </p>
         </div>
-        {hasCreateRole &&
-          (canCreateTender ? (
-            <Button asChild>
-              <Link to="/tenders/new">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Выгружается то, что отфильтровано на экране, а не вся база. */}
+          <ExportButton exportType="tenders" filters={apiQuery as Record<string, unknown>} />
+          {hasCreateRole &&
+            (canCreateTender ? (
+              <Button asChild>
+                <Link to="/tenders/new">
+                  <Plus className="size-4" />
+                  Новый тендер
+                </Link>
+              </Button>
+            ) : (
+              <Button disabled title={companyGateHint(gate.status)}>
                 <Plus className="size-4" />
                 Новый тендер
-              </Link>
-            </Button>
-          ) : (
-            <Button disabled title={companyGateHint(gate.status)}>
-              <Plus className="size-4" />
-              Новый тендер
-            </Button>
-          ))}
+              </Button>
+            ))}
+        </div>
       </div>
 
       {hasCreateRole && <CompanyGateBanner gate={gate} />}

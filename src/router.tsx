@@ -15,6 +15,7 @@ import { TenderCreatePage } from '@/features/tenders/TenderCreatePage'
 import { AuctionPage } from '@/features/auction/AuctionPage'
 import { AuctionsPage } from '@/features/auction/AuctionsPage'
 import { ContractsPage } from '@/features/contracts/ContractsPage'
+import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { CompaniesAdminPage } from '@/features/company/CompaniesAdminPage'
 import { MyCompanyPage } from '@/features/company/MyCompanyPage'
 import { NotificationsPage } from '@/features/notifications/NotificationsPage'
@@ -43,7 +44,6 @@ export const router = createBrowserRouter([
     path: '/',
     element: <AppLayout />,
     children: [
-      { index: true, element: <Navigate to="/tenders" replace /> },
       {
         element: <GuestRoute />,
         children: [
@@ -59,6 +59,10 @@ export const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [
+          // Корень — обзор компании (раньше редиректил на список тендеров).
+          // Внутри ProtectedRoute: дашборд считается по компании актора,
+          // гостю показывать нечего.
+          { index: true, element: <DashboardPage /> },
           { path: 'tenders', element: <TendersPage /> },
           // Статический сегмент раньше динамического: React Router v7 приоритизирует
           // статику, но порядок в дереве всё равно важен для читаемости.
