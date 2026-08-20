@@ -116,6 +116,9 @@ src/
 Path alias: `@/` → `src/`. `verbatimModuleSyntax` is on, so type-only imports must use
 `import type`.
 
+`docs/wireframes.html` is a standalone page with the early screen sketches and the status
+colour palette the badges follow — open it in a browser; it is not part of the bundle.
+
 ## Implementation notes
 
 A few decisions worth knowing before reading the code:

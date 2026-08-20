@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tender Front — Дизайн-наброски (wireframes)</title>
+<style>
+  :root {
+    --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
+    --text: #0f172a; --muted: #64748b;
+    --primary: #2563eb; --primary-soft: #eff6ff;
+    --success: #16a34a; --success-soft: #f0fdf4;
+    --warning: #d97706; --warning-soft: #fffbeb;
+    --danger: #dc2626; --danger-soft: #fef2f2;
+    --violet: #7c3aed; --violet-soft: #f5f3ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, "Inter", sans-serif; background: var(--bg); color: var(--text); }
+  .page { max-width: 1200px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+  h2 { font-size: 20px; font-weight: 700; margin: 48px 0 8px; }
+  h3 { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 24px 0 8px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ==== Wireframe blocks ==== */
+  .wf { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+  .wf-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+  .wf-head .tag { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .wf-body { padding: 16px; }
+  .wf.tall .wf-body { min-height: 420px; }
+  .wf.tall2 .wf-body { min-height: 560px; }
+
+  /* ==== UI primitives (fake, для наброска) ==== */
+  .bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .logo { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .logo .dot { width: 22px; height: 22px; border-radius: 6px; background: var(--primary); display: inline-block; }
+  .search { flex: 1; max-width: 420px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--muted); }
+  .spacer { flex: 1; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: default; white-space: nowrap; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn-success { background: var(--success); border-color: var(--success); color: #fff; }
+  .btn-ghost { border-color: transparent; background: transparent; color: var(--muted); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: var(--success-soft); color: var(--success); }
+  .badge-amber { background: var(--warning-soft); color: var(--warning); }
+  .badge-red { background: var(--danger-soft); color: var(--danger); }
+  .badge-blue { background: var(--primary-soft); color: var(--primary); }
+  .badge-violet { background: var(--violet-soft); color: var(--violet); }
+  .badge-gray { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+
+  .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .table td { padding: 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .table tr:hover td { background: #fafbfc; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: sh 1.4s infinite; border-radius: 6px; }
+  @keyframes sh { to { background-position: -200% 0; } }
+
+  .card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--surface); }
+  .stat { display: flex; flex-direction: column; gap: 4px; }
+  .stat .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: 12px; color: var(--muted); }
+
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .select, .input { border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; background: var(--surface); color: var(--text); min-width: 130px; }
+  .form-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .form-field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .form-field .input { min-width: 100%; padding: 9px 12px; }
+
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px; font-size: 13px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { font-weight: 500; }
+
+  .timeline { border-left: 2px solid var(--border); padding-left: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .tl-item { position: relative; }
+  .tl-item::before { content:''; position: absolute; left: -22px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+  .tl-item.done::before { background: var(--success); }
+  .tl-item.todo::before { background: var(--border); }
+  .tl-item .d { font-size: 12px; color: var(--muted); }
+
+  .auction-price { text-align: center; padding: 20px 0 8px; }
+  .auction-price .big { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+  .auction-price .delta { font-size: 13px; font-weight: 700; }
+  .down { color: var(--success); }
+  .ticker { font-family: ui-monospace, monospace; font-size: 16px; font-weight: 700; color: var(--success); }
+  .step-line { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); margin: 12px 0; }
+  .step { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
+  .step.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .step.done { background: var(--success-soft); color: var(--success); border-color: transparent; }
+  .note { margin-top: 12px; font-size: 12px; color: var(--muted); background: var(--bg); border-radius: 8px; padding: 10px 12px; border: 1px dashed var(--border); }
+  .annot { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  .avatar { width: 30px; height: 30px; border-radius: 999px; background: linear-gradient(135deg,var(--violet),var(--primary)); display:inline-block; vertical-align: middle; margin-right: 8px; }
+
+  /* info strip */
+  .chiplist { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-size: 12px; background: var(--bg); }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Дизайн-наброски Tender Front</h1>
+<div class="sub">Мид-фиделити вайрфреймы основных экранов · Стек: React 19 + Tailwind 4 + shadcn/ui · Палитра ниже</div>
+
+<!-- ============ Общий каркас ============ -->
+<h2>01 · Общий каркас (App Layout) — одинаков на всех страницах</h2>
+<div class="wf">
+  <div class="bar">
+    <div class="logo"><span class="dot"></span>Tender Platform</div>
+    <div class="search">🔍 Поиск: номер, название, ИНН…</div>
+    <span class="btn btn-sm">+ Новый тендер</span>
+    <span class="spacer"></span>
+    <span class="badge badge-blue">Заказчик</span>
+    <span class="avatar"></span><span style="font-size:13px;font-weight:600">Фролов А.А.</span>
+  </div>
+  <div class="wf-body" style="display:flex;gap:16px;min-height:180px">
+    <div style="width:190px;border-right:1px solid var(--border);padding-right:16px;display:flex;flex-direction:column;gap:2px;font-size:13px">
+      <div style="padding:8px 10px;border-radius:8px;background:var(--primary-soft);color:var(--primary);font-weight:600">📋 Тендеры</div>
+      <div style="padding:8px 10px;border-radius:8px">⚡ Аукционы</div>
+      <div style="padding:8px 10px;border-radius:8px">📄 Контракты</div>
+      <div style="padding:8px 10px;border-radius:8px">🏢 Моя компания</div>
+      <div style="padding:8px 10px;border-radius:8px">🔔 Уведомления</div>
+      <div style="padding:8px 10px;border-radius:8px">⭐ Сохранённые поиски</div>
+      <div style="margin-top:16px;padding:8px 10px;border-radius:8px;color:var(--muted)">⚙️ Настройки API</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+      <div class="skeleton" style="height:28px;width:40%"></div>
+      <div class="skeleton" style="height:16px;width:70%"></div>
+      <div class="skeleton" style="height:16px;width:55%"></div>
+      <div class="skeleton" style="height:120px;width:100%"></div>
+    </div>
+  </div>
+</div>
+<div class="annot">Layout: шапка (логотип + глобальный поиск + «Новый тендер» + роль + юзер) · левый сайдбар-навигация · контентная область. На мобильных сайдбар сворачивается в бургер, таблицы становятся карточками.</div>
+
+<!-- ============ 02 Auth ============ -->
+<h2>02 · Auth: Логин / Регистрация / 2FA</h2>
+<div class="grid grid-3">
+  <div class="wf">
+    <div class="wf-head">Логин <span class="tag">/auth/token</span></div>
+    <div class="wf-body" style="min-height:360px">
+      <div style="text-align:center;font-weight:800;font-size:18px;margin-bottom:4px">Вход</div>
+      <div class="muted" style="text-align:center;margin-bottom:20px">Tender Platform</div>
+      <div class="form-field"><label>Email</label><div class="input">aleksander@frolov.guru</div></div>
+      <div class="form-field"><label>Пароль</label><div class="input">••••••••••••</div></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:16px"><span class="muted">Запомнить</span><span style="color:var(--primary)">Забыли пароль?</span></div>
+      <span class="btn btn-primary" style="width:100%;justify-content:center">Войти</span>
+      <div class="note">Нет аккаунта? <b>Регистрация</b> · при включённой 2FA → шаг 3</div>
+    </div>
+  </div>
+  <div class="wf">
+    <div class="wf-head">Регистрация <span class="tag">/auth/register</span></div>
+    <div class="wf-body" style="min-height:360px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:14px">Создать аккаунт</div>
+      <div class="form-field"><label>Тип компании</label><div class="chiplist"><span class="chip" style="background:var(--primary);color:#fff;border-color:var(--primary)">Заказчик</span><span class="chip">Поставщик</span></div></div>
+      <div class="form-field"><label>Название организации</label><div class="input">ООО «…»</div></div>
+      <div class="grid grid-2" style="gap:8px">
+        <div class="form-field"><label>ИНН</label><div class="input">7700000000</div></div>
+        <div class="form-field"><label>КПП</label><div class="input">770001001</div></div>
+      </div>
+      <div class="form-field"><label>Email</label><div class="input">name@company.ru</div></div>
+      <div class="form-field"><label>Пароль</label><div class="input">••••••••</div></div>
+      <span class="btn btn-primary" style="width:100%;justify-content:center">Зарегистрироваться</span>
+      <div class="note">После регистрации — подтверждение email по ссылке из письма (статус invited → email_pending → active).</div>
+    </div>
+  </div>
+  <div class="wf">
+    <div class="wf-head">2FA <span class="tag">/auth/2fa/confirm</span></div>
+    <div class="wf-body" style="min-height:360px">
+      <div style="text-align:center;font-weight:700;font-size:15px;margin-bottom:4px">Двухфакторная аутентификация</div>
+      <div class="muted" style="text-align:center;margin-bottom:20px">Введите 6-значный код из приложения</div>
+      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:20px">
+        <div class="skeleton" style="width:40px;height:48px;border-radius:8px"></div>
+        <div class="skeleton" style="width:40px;height:48px;border-radius:8px"></div>
+        <div class="skeleton" style="width:40px;height:48px;border-radius:8px"></div>
+        <div class="skeleton" style="width:40px;height:48px;border-radius:8px"></div>
+        <div class="skeleton" style="width:40px;height:48px;border-radius:8px"></div>
+        <div class="skeleton" style="width:40px;height:48px;border-radius:8px"></div>
+      </div>
+      <span class="btn btn-primary" style="width:100%;justify-content:center">Подтвердить</span>
+      <div class="note">Код из TOTP (email/SMS-фолбэк). Эти 6 полей — одиночный input с автофокусом и маской.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 03 Каталог ============ -->
+<h2>03 · Каталог тендеров <span class="mono">GET /tenders (cursor)</span></h2>
+<div class="wf">
+  <div class="wf-body">
+    <div class="filters" style="margin-bottom:14px">
+      <div class="select">Статус: все</div>
+      <div class="select">Закон: все (44-ФЗ/223-ФЗ/коммерч.)</div>
+      <div class="select">Процедура: все</div>
+      <div class="select">Регион: все</div>
+      <div class="select">НМЦК: любая</div>
+      <div class="input" style="flex:1;min-width:140px">🔍 Поиск по названию…</div>
+      <span class="btn btn-primary btn-sm">Применить</span>
+      <span class="btn btn-sm">Сбросить</span>
+      <span class="spacer"></span>
+      <span class="badge badge-gray">⚡ live: 4 аукциона</span>
+    </div>
+    <table class="table">
+      <thead><tr><th>Номер</th><th>Название</th><th>Статус</th><th>НМЦК</th><th>Регион</th><th>Дедлайн подачи</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="mono">Т-2026-00841</td>
+          <td><b>Поставка серверного оборудования</b><br><span class="muted">ОКПД2 26.20 · 44-ФЗ · аукцион</span></td>
+          <td><span class="badge badge-blue">Приём заявок</span></td>
+          <td class="num">12 400 000 ₽</td>
+          <td>Москва</td>
+          <td>21.08.2026 10:00 · <span class="muted">осталось 3 дн</span></td>
+          <td><span class="btn btn-sm btn-primary">Открыть</span></td>
+        </tr>
+        <tr>
+          <td class="mono">Т-2026-00793</td>
+          <td><b>Разработка ПО для электронного документооборота</b><br><span class="muted">ОКПД2 62.01 · коммерческий · конкурс</span></td>
+          <td><span class="badge badge-amber">Идёт аукцион</span></td>
+          <td class="num">8 750 000 ₽</td>
+          <td>Санкт-Петербург</td>
+          <td>18.08.2026 14:00 · <span class="muted">осталось 5 час</span></td>
+          <td><span class="btn btn-sm btn-success">На аукцион →</span></td>
+        </tr>
+        <tr>
+          <td class="mono">Т-2026-00612</td>
+          <td><b>Капитальный ремонт кровли, корпус №2</b><br><span class="muted">ОКПД2 43.91 · 223-ФЗ · закупка у ед. поставщика</span></td>
+          <td><span class="badge badge-green">Завершён</span></td>
+          <td class="num">3 200 000 ₽</td>
+          <td>Казань</td>
+          <td>10.08.2026 09:00</td>
+          <td><span class="btn btn-sm">Открыть</span></td>
+        </tr>
+        <tr>
+          <td class="mono">Т-2026-00588</td>
+          <td><b>Оказание услуг по информационной безопасности</b><br><span class="muted">ОКПД2 74.90 · 44-ФЗ · запрос предложений</span></td>
+          <td><span class="badge badge-gray">Черновик</span></td>
+          <td class="num">—</td>
+          <td>Екатеринбург</td>
+          <td>—</td>
+          <td><span class="btn btn-sm">Открыть</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="display:flex;justify-content:center;padding:14px 0 4px"><span class="btn">Показать ещё (next_cursor) ↓</span></div>
+  </div>
+</div>
+<div class="annot">Статусы (9 из спеки): draft, published, withdrawn, accepting_bids, bidding, evaluation, awarding, contract, closed, cancelled — каждый со своим цветом бейджа. Дедлайн «осталось N дн/час» — живой счётчик. Строка с аукционом в статусе bidding подсвечена и ведёт прямо на аукцион.</div>
+
+<!-- ============ 04 Карточка тендера ============ -->
+<h2>04 · Карточка тендера <span class="mono">GET /tenders/{id} + /lots</span></h2>
+<div class="grid grid-2">
+  <div class="wf tall">
+    <div class="wf-body">
+      <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:6px">
+        <div><span class="mono">Т-2026-00841</span><span style="margin-left:10px" class="badge badge-blue">Приём заявок</span></div>
+        <div style="display:flex;gap:6px"><span class="btn btn-sm">✎ Изменить</span><span class="btn btn-sm btn-danger" style="border-color:var(--danger);color:var(--danger)">Отменить</span></div>
+      </div>
+      <h3 style="margin:0 0 6px;color:var(--text);text-transform:none;letter-spacing:0;font-size:18px">Поставка серверного оборудования</h3>
+      <div class="muted" style="margin-bottom:16px">Заказчик: ООО «Ромашка» · ИНН 7700000000 · Москва</div>
+      <div class="grid grid-2" style="gap:10px;margin-bottom:16px">
+        <div class="card stat"><span class="l">НМЦК</span><span class="v">12 400 000 ₽</span><span class="muted">вкл. НДС 20% · нет стартовой цены: нет</span></div>
+        <div class="card stat"><span class="l">Обеспечение / способ</span><span class="v">2 480 000 ₽</span><span class="muted">аванс: 30%</span></div>
+        <div class="card stat"><span class="l">Процедура</span><span class="v" style="font-size:16px">Электронный аукцион</span><span class="muted">44-ФЗ · открытая</span></div>
+        <div class="card stat"><span class="l">Подача заявок до</span><span class="v" style="font-size:16px">21.08.2026 10:00</span><span class="muted">осталось 3 дня</span></div>
+      </div>
+      <h3>Описание</h3>
+      <p style="font-size:13px;line-height:1.6;color:#334155;margin-bottom:16px">Поставка, монтаж и пусконаладка серверного оборудования… требования к производительности, гарантия 36 мес., сервисное обслуживание 5×8…</p>
+      <h3>Timeline (ключевые даты)</h3>
+      <div class="timeline" style="margin-bottom:16px">
+        <div class="tl-item done"><div>Публикация</div><div class="d">01.08.2026 12:00</div></div>
+        <div class="tl-item done"><div>Приём заявок (bids_end)</div><div class="d">до 21.08.2026 10:00</div></div>
+        <div class="tl-item"><div>Начало аукциона (auction_start)</div><div class="d">21.08.2026 12:00</div></div>
+        <div class="tl-item todo"><div>Подведение итогов (evaluation_end)</div><div class="d">28.08.2026 18:00</div></div>
+      </div>
+      <div class="chiplist"><span class="chip">📄 Извещение.pdf</span><span class="chip">📄 Протокол НМЦК.pdf</span><span class="chip">🔒 Проект контракта.docx</span></div>
+    </div>
+  </div>
+  <div class="wf tall">
+    <div class="wf-head">Лоты <span class="tag">GET /tenders/{id}/lots</span></div>
+    <div class="wf-body">
+      <table class="table">
+        <thead><tr><th>№</th><th>Наименование</th><th>Кол-во</th><th>Ед.</th><th>Цена за ед.</th><th>Сумма</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Сервер 2U, 2×Xeon, 512GB RAM</td><td>4</td><td>шт</td><td class="num">1 850 000</td><td class="num">7 400 000 ₽</td></tr>
+          <tr><td>2</td><td>СХД 24×2.5", dual controller</td><td>2</td><td>шт</td><td class="num">2 200 000</td><td class="num">4 400 000 ₽</td></tr>
+          <tr><td>3</td><td>Комутатор 48×10GbE</td><td>3</td><td>шт</td><td class="num">200 000</td><td class="num">600 000 ₽</td></tr>
+        </tbody>
+      </table>
+      <div class="note" style="margin-top:14px">Суммы — только из <code>amount_minor</code> (целые копейки), форматирование в presentation layer. НДС/цены — по Money-схеме.</div>
+      <div style="margin-top:14px">
+        <div class="muted" style="margin-bottom:8px">Вопросы и разъяснения (этап 2)</div>
+        <div class="card" style="background:var(--bg)">
+          <div style="display:flex;gap:8px;justify-content:space-between;align-items:center">
+            <div class="muted" style="font-size:12px">Вопрос: «Возможна ли поставка в течение 30 дней?»</div>
+            <span class="badge badge-blue">2 ответа</span>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:6px">Разъяснение №1: «Да, при условии…» · 15.08.2026</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 05 Аукцион ============ -->
+<h2>05 · Live-аукцион <span class="mono">GET /auctions/{id}/state + SSE /stream · POST /bids</span></h2>
+<div class="wf">
+  <div class="wf-body">
+    <div class="step-line">
+      <span class="step done">Приём заявок</span><span>→</span>
+      <span class="step on">Аукцион</span><span>→</span>
+      <span class="step">Рассмотрение</span><span>→</span>
+      <span class="step">Подведение итогов</span><span>→</span>
+      <span class="step">Контракт</span>
+      <span class="spacer"></span>
+      <span class="badge badge-red">● LIVE (SSE)</span>
+    </div>
+    <div class="auction-price">
+      <div class="muted" style="font-size:12px">Текущая лучшая цена (шаг снижения 1,5%)</div>
+      <div class="big">11 742 000 ₽</div>
+      <div class="delta down">▼ 658 000 ₽ (−5,3% от НМЦК)</div>
+    </div>
+    <div style="display:flex;justify-content:center;gap:8px;align-items:baseline;margin-bottom:16px">
+      <div class="ticker">0:07:42</div>
+      <span class="muted" style="font-size:12px">до окончания торгов · следующий шаг: 11 564 000 ₽</span>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <div style="font-weight:700;font-size:14px;margin-bottom:10px">Ваша ставка</div>
+        <div class="form-field"><label>Цена (включая НДС)</label><div class="input" style="text-align:right;font-weight:700">11 564 000 ₽</div></div>
+        <div class="muted" style="font-size:11px;margin-bottom:10px">Ниже текущей на ≥ шаг снижения. Отправка с заголовком <code>Idempotency-Key</code> — повторный клик не создаст дубль.</div>
+        <span class="btn btn-success" style="width:100%;justify-content:center">Сделать ставку ⚡</span>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;font-size:14px;margin-bottom:10px">История ставок <span class="muted" style="font-weight:400;font-size:11px">(live, по SSE)</span></div>
+        <table class="table">
+          <thead><tr><th>Время</th><th>Участник</th><th>Цена</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="mono">18:52:31</td><td>ООО «ТехноСервис»</td><td class="num">11 742 000 ₽</td><td><span class="badge badge-green">текущая</span></td></tr>
+            <tr><td class="mono">18:49:02</td><td>АО «ИВС»</td><td class="num">11 920 500 ₽</td><td></td></tr>
+            <tr><td class="mono">18:44:17</td><td>ООО «ТехноСервис»</td><td class="num">12 100 000 ₽</td><td></td></tr>
+            <tr><td class="mono">18:38:44</td><td>ООО «Дельта»</td><td class="num">12 285 000 ₽</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="muted" style="font-size:11px;margin-top:8px">новые ставки приходят по SSE и встают в начало списка (optimistic UI)</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="annot">SSE-поток: GET /auctions/{id}/stream → discovery-документ с Mercure-URL → EventSource. При ошибке/таймауте — авто-reconnect с показом «переподключение…». Ставка с идемпотент-ключом retry-safe: нажал Shift+клик / сеть моргнула — дубля не будет.</div>
+
+<!-- ============ 06 Профиль / Компания ============ -->
+<h2>06 · Профиль и компания <span class="mono">GET /users/me · GET /companies · /suppliers/profile</span></h2>
+<div class="grid grid-2">
+  <div class="wf">
+    <div class="wf-head">Мой профиль <span class="tag">GET /users/me</span></div>
+    <div class="wf-body">
+      <div class="kv" style="margin-bottom:16px">
+        <dt>Имя</dt><dd>Фролов Александр Александрович</dd>
+        <dt>Email</dt><dd>aleksander@frolov.guru <span class="badge badge-green">подтверждён</span></dd>
+        <dt>Роль</dt><dd><span class="badge badge-blue">admin</span></dd>
+        <dt>Статус</dt><dd><span class="badge badge-green">active</span></dd>
+        <dt>Последний вход</dt><dd>17.08.2026 22:40</dd>
+        <dt>2FA</dt><dd><span class="badge badge-green">включена</span> · <span class="muted">изменить</span></dd>
+      </div>
+      <span class="btn">✎ Изменить имя</span>
+      <span class="btn" style="border-color:var(--danger);color:var(--danger);margin-left:8px">Выйти</span>
+    </div>
+  </div>
+  <div class="wf">
+    <div class="wf-head">Компания <span class="tag">GET /companies (верификация)</span></div>
+    <div class="wf-body">
+      <div class="kv" style="margin-bottom:16px">
+        <dt>Название</dt><dd>ООО «Ромашка»</dd>
+        <dt>ИНН / КПП</dt><dd class="mono">7700000000 / 770001001</dd>
+        <dt>ОГРН</dt><dd class="mono">1167746000000</dd>
+        <dt>Тип</dt><dd>Заказчик и поставщик</dd>
+        <dt>Статус</dt><dd><span class="badge badge-violet">на верификации</span></dd>
+      </div>
+      <div class="card" style="background:var(--violet-soft);border-color:#ddd6fe">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Верификация компании</div>
+        <div class="muted" style="font-size:12px">Документы отправлены 15.08 · модерация 1-2 раб. дня → после подтверждения откроется участие в закрытых процедурах (contract_holders).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 07 Деплой-схема ============ -->
+<h2>07 · Деплой: фронт и API работают вместе</h2>
+<div class="wf">
+  <div class="wf-body">
+    <div class="grid grid-3" style="gap:14px">
+      <div class="card" style="text-align:center">
+        <div style="font-size:26px">🖥️</div>
+        <div style="font-weight:700;font-size:14px;margin:6px 0">tender-front</div>
+        <div class="muted" style="font-size:12px">nginx:alpine<br>статический dist/ (React SPA)<br><code>/</code> → index.html fallback</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:26px">🔀</div>
+        <div style="font-weight:700;font-size:14px;margin:6px 0">nginx proxy</div>
+        <div class="muted" style="font-size:12px"><code>/api/*</code> → api:8080<br>один домен ⇒ нет CORS<br>один TLS</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:26px">🐘</div>
+        <div style="font-weight:700;font-size:14px;margin:6px 0">tender (API)</div>
+        <div class="muted" style="font-size:12px">Symfony 8.1 · PHP 8.5<br>PostgreSQL · Redis · RabbitMQ · Mercure<br>OpenAPI в <code>/api/openapi.yaml</code></div>
+      </div>
+    </div>
+    <div class="note" style="margin-top:14px">Одна docker-сеть, один compose-профиль. Фронт собирается в CI (multi-stage: node build → nginx), монтируется рядом с API-контейнером. Обновление фронта не требует рестарта API.</div>
+  </div>
+</div>
+
+<!-- ============ Палитра ============ -->
+<h2>Палитра и токены</h2>
+<div class="wf"><div class="wf-body">
+  <div class="grid grid-3" style="gap:14px">
+    <div class="card"><div class="muted" style="margin-bottom:8px">Primary (акции, ссылки, фокус)</div><div style="display:flex;gap:8px">
+      <div style="width:48px;height:48px;border-radius:10px;background:#2563eb"></div>
+      <div style="width:48px;height:48px;border-radius:10px;background:#1d4ed8"></div>
+      <div style="width:48px;height:48px;border-radius:10px;background:#eff6ff"></div>
+      <div class="muted" style="font-size:11px;align-self:end">#2563eb · #1d4ed8 · #eff6ff</div>
+    </div></div>
+    <div class="card"><div class="muted" style="margin-bottom:8px">Семантика статусов</div><div class="chiplist">
+      <span class="badge badge-green">active / closed / success</span>
+      <span class="badge badge-amber">bidding / pending</span>
+      <span class="badge badge-red">cancelled / error</span>
+      <span class="badge badge-blue">accepting_bids / info</span>
+      <span class="badge badge-violet">verification</span>
+      <span class="badge badge-gray">draft / neutral</span>
+    </div></div>
+    <div class="card"><div class="muted" style="margin-bottom:8px">Типографика</div>
+      <div style="font-size:24px;font-weight:800">Display 24/700</div>
+      <div style="font-size:16px;font-weight:600">H 16/600</div>
+      <div style="font-size:13px">Body 13/400 · таблицы, карточки</div>
+      <div style="font-size:11px;color:var(--muted)">Caption 11 · бейджи, хелперы</div>
+      <div class="mono">Mono 12 · номера, суммы, время</div>
+    </div>
+  </div>
+  <div class="note" style="margin-top:14px">Поддерживается тёмная тема (shadcn/ui CSS-переменные). Деньги только tabular-nums, моноширинные номера тендеров — <code>tabular-nums</code>.</div>
+</div></div>
+
+</div>
+</body>
+</html>
