@@ -78,6 +78,9 @@ put secrets in `.env`.
 | `npm run lint` | oxlint |
 | `npm run gen` | Refresh `src/api/schema.d.ts` from the live API (needs it on `:8080`) |
 
+A `Makefile` wraps the same scripts for convenience — `make help` lists the targets, and
+`make check` runs lint plus type-check plus build, i.e. exactly what CI runs.
+
 There is no test runner in the project yet; `npm run build` and `npm run lint` are the
 checks that gate a change, and CI runs exactly those.
 
