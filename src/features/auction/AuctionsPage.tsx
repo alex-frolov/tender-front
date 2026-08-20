@@ -64,6 +64,19 @@ function lotLabel(number: number | null | undefined, title: string | null | unde
  * только своего тенанта, см. спеку GET /auctions/stream) — такие строки
  * обновляются на карточке аукциона, куда ведёт ссылка из таблицы.
  */
+/**
+ * Торги, у которых плановое окончание уже позади, а статус всё ещё «Торги идут».
+ *
+ * Само истечение таймера аукцион не закрывает: переход TRADE → CHOICE делает
+ * заказчик (finish или выбор победителя), автоматической задачи для этого на
+ * бэкенде нет. Такой аукцион продолжает принимать ставки, поэтому его видно
+ * в списке отдельной пометкой, а не нулевым таймером.
+ */
+function isOverdue(auction: { status?: string; planned_end_at?: string | null }): boolean {
+  if (auction.status !== 'trade' || auction.planned_end_at == null) return false
+  return new Date(auction.planned_end_at).getTime() < Date.now()
+}
+
 export function AuctionsPage() {
   const [statusFilter, setStatusFilter] = useState<string>(ALL_VALUE)
   // Последний снапшот по каждому аукциону: накладывается на строку списка.
@@ -285,11 +298,20 @@ export function AuctionsPage() {
                         {auction.planned_end_at != null ? (
                           <>
                             <div>{formatDateTime(auction.planned_end_at)}</div>
-                            <div className="text-muted-foreground text-xs tabular-nums">
-                              {auction.remaining_sec != null
-                                ? formatSeconds(auction.remaining_sec)
-                                : formatRemaining(auction.planned_end_at)}
-                            </div>
+                            {/* Истёкший таймер не закрывает торги сам: аукцион
+                                остаётся в TRADE, пока заказчик не завершит его
+                                (POST /auctions/{id}/finish). Пока это не сделано,
+                                строка «00:00» выглядела бы как идущие торги —
+                                поэтому просроченные помечаем явно. */}
+                            {isOverdue(auction) ? (
+                              <Badge variant="warning">торги просрочены</Badge>
+                            ) : (
+                              <div className="text-muted-foreground text-xs tabular-nums">
+                                {auction.remaining_sec != null
+                                  ? formatSeconds(auction.remaining_sec)
+                                  : formatRemaining(auction.planned_end_at)}
+                              </div>
+                            )}
                           </>
                         ) : (
                           <span className="text-muted-foreground">—</span>

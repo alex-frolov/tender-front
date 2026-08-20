@@ -31,6 +31,8 @@ import { formatDateTime, formatRemaining, formatSeconds } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
 import { AuctionStatusBadge } from './AuctionStatusBadge'
 import { AuctionCancelForm } from './AuctionCancelForm'
+import { AuctionEditForm } from './AuctionEditForm'
+import { AuctionLifecycle } from './AuctionLifecycle'
 import { AuctionScheduleForm } from './AuctionScheduleForm'
 import { BidComposer } from './BidComposer'
 import { mergeLiveSnapshot } from './liveState'
@@ -278,6 +280,10 @@ export function AuctionPage() {
         <AuctionScheduleForm auctionId={auctionId} status={status} />
       )}
 
+      <AuctionEditForm auctionId={auctionId} state={state} />
+
+      <AuctionLifecycle auctionId={auctionId} state={state} bids={bids} />
+
       <AuctionCancelForm
         auctionId={auctionId}
         tenderId={state?.tender_id}
@@ -400,7 +406,12 @@ function describeTimer({
 }): TimerView {
   if (trading) {
     return countdown <= 0
-      ? { value: '00:00', hint: 'Время шага истекло — ждём завершения торгов' }
+      ? {
+          value: '00:00',
+          // Ждать нечего: автоматического закрытия торгов на бэкенде нет,
+          // TRADE → CHOICE делает заказчик (finish или выбор победителя).
+          hint: 'Время истекло — торги закрывает заказчик',
+        }
       : { value: formatSeconds(countdown) }
   }
 

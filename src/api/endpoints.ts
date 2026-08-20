@@ -149,6 +149,19 @@ export async function postAuctionBid({ auctionId, priceMinor, idempotencyKey }: 
   })
   return unwrap(result)
 }
+/**
+ * Оценка исполнения заказа (POST /tenders/{id}/rating, 1–10). Выставляет
+ * заказчик после завершения исполнения (аукцион в DONE или DONE_BY_CLAIM);
+ * хранится в тендере (`execution_rating`).
+ */
+export async function rateTender(tenderId: string, rating: number) {
+  const result = await client.POST('/tenders/{tenderId}/rating', {
+    params: { path: { tenderId } },
+    body: { execution_rating: rating },
+  })
+  return unwrap(result)
+}
+
 // ---------- Лоты тендера ----------
 
 export type Lot = components['schemas']['Lot']
@@ -226,6 +239,88 @@ export async function scheduleAuction(auctionId: string, scheduledStartAt: strin
   const result = await client.POST('/auctions/{auctionId}/schedule', {
     params: { path: { auctionId } },
     body: { scheduled_start_at: scheduledStartAt },
+  })
+  return unwrap(result)
+}
+
+export type AuctionUpdate = components['schemas']['AuctionUpdate']
+export type AuctionWinnerResult = components['schemas']['AuctionWinnerResult']
+export type AuctionStatusResult = components['schemas']['AuctionStatusResult']
+
+/**
+ * Правка торговых параметров до старта (PATCH /auctions/{id}): тип, режим и
+ * величина шага, лимиты цены, длительность шага, число продлений.
+ *
+ * Канонические поля лота (база цены, НДС, стартовая цена, окно до исполнения)
+ * и дата старта этим методом не меняются — их нет в схеме, и лишнее поле даёт
+ * 422. После старта торгов правка запрещена (409), потому что правила уже
+ * заморожены в rules_snapshot.
+ */
+export async function updateAuction(auctionId: string, input: AuctionUpdate) {
+  const result = await client.PATCH('/auctions/{auctionId}', {
+    params: { path: { auctionId } },
+    body: input,
+  })
+  return unwrap(result)
+}
+
+/**
+ * Завершение торгов (POST /auctions/{id}/finish, TRADE → CHOICE): окно
+ * закрывается, ставки больше не принимаются, фиксируется actual_end_at.
+ *
+ * Само по себе истечение таймера аукцион не закрывает — торги останавливает
+ * заказчик этим вызовом (или выбором победителя, который завершит торги сам).
+ */
+export async function finishAuction(auctionId: string): Promise<AuctionWinnerResult> {
+  const result = await client.POST('/auctions/{auctionId}/finish', {
+    params: { path: { auctionId } },
+  })
+  return unwrap(result)
+}
+
+/**
+ * Выбор победителя (POST /auctions/{id}/winner).
+ *
+ * Без `bidId` — автовыбор минимальной цены, только для редукциона (иначе 409
+ * wrong_auction_type); при необходимости сам завершит торги. С `bidId` — ручной
+ * выбор предложения для свободной цены и запроса цены из статуса «Выбор
+ * победителя». Нет принятых ставок → 409 no_winner.
+ */
+export async function chooseAuctionWinner(
+  auctionId: string,
+  bidId?: string,
+): Promise<AuctionWinnerResult> {
+  const result = await client.POST('/auctions/{auctionId}/winner', {
+    params: { path: { auctionId } },
+    body: bidId != null && bidId !== '' ? { bid_id: bidId } : {},
+  })
+  return unwrap(result)
+}
+
+/** Начало работ по договору (POST /auctions/{id}/start-work, APPROVE → IN_WORK). */
+export async function startAuctionWork(auctionId: string): Promise<AuctionStatusResult> {
+  const result = await client.POST('/auctions/{auctionId}/start-work', {
+    params: { path: { auctionId } },
+  })
+  return unwrap(result)
+}
+
+/** Исполнитель отметил выполнение (POST /auctions/{id}/mark-done, IN_WORK → DONE_BY_PERFORMER). */
+export async function markAuctionDone(auctionId: string): Promise<AuctionStatusResult> {
+  const result = await client.POST('/auctions/{auctionId}/mark-done', {
+    params: { path: { auctionId } },
+  })
+  return unwrap(result)
+}
+
+/**
+ * Заказчик подтвердил выполнение (POST /auctions/{id}/confirm-done → DONE).
+ * Требует действующего договора (подписан или зарегистрирован), иначе 409
+ * `contract_required`.
+ */
+export async function confirmAuctionDone(auctionId: string): Promise<AuctionStatusResult> {
+  const result = await client.POST('/auctions/{auctionId}/confirm-done', {
+    params: { path: { auctionId } },
   })
   return unwrap(result)
 }

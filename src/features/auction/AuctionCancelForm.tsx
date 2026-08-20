@@ -1,23 +1,20 @@
 import { useState, type FormEvent } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ban } from 'lucide-react'
-import { cancelAuction, getTender } from '@/api/endpoints'
+import { cancelAuction } from '@/api/endpoints'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { useAuth } from '@/features/auth/AuthContext'
 import { apiErrorMessage } from '@/lib/errors'
-import { canManageTender } from '@/lib/tenderAccess'
 import { isAuctionCancellable, type AuctionStatus } from './auctionStatus'
+import { useAuctionParty } from './useAuctionParty'
 
 /**
  * Отмена аукциона (POST /auctions/{id}/cancel → CANCELLED).
  *
  * Кнопку видит только тот, у кого действие пройдёт: право `auction.control`
  * (admin/manager, agent — 403) И своя процедура — отменяет заказчик, то есть
- * компания-тенант тендера. Роль в процедуре нигде не приходит полем, поэтому
- * тендер аукциона запрашивается отдельно и сверяется через `canManageTender`,
- * как это делает карточка тендера.
+ * компания-тенант тендера (`useAuctionParty`).
  *
  * Статус тоже проверяется заранее: из терминальных (завершён, отменён, истёк)
  * переход `cancel` не разрешён и вернул бы 409.
@@ -32,19 +29,12 @@ export function AuctionCancelForm({
   status: AuctionStatus | undefined
 }) {
   const queryClient = useQueryClient()
-  const { user } = useAuth()
 
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  // Агенту право auction.control не выдаётся никогда — тендер ему не запрашиваем.
-  const hasRole = user?.role != null && user.role !== 'agent'
-  const tenderQuery = useQuery({
-    queryKey: ['tender', tenderId],
-    queryFn: () => getTender(tenderId ?? ''),
-    enabled: hasRole && tenderId != null && isAuctionCancellable(status),
-  })
+  const { canControl } = useAuctionParty(tenderId, isAuctionCancellable(status))
 
   const mutation = useMutation({
     mutationFn: (value: string) => cancelAuction(auctionId, value),
@@ -54,8 +44,7 @@ export function AuctionCancelForm({
     },
   })
 
-  const tender = tenderQuery.data
-  if (!isAuctionCancellable(status) || tender == null || !canManageTender(tender, user)) {
+  if (!isAuctionCancellable(status) || !canControl) {
     return null
   }
 
