@@ -1,5 +1,5 @@
 import { client, unwrap } from './client'
-import type { components } from './schema'
+import type { components, operations } from './schema'
 
 // ---------- Тендеры ----------
 
@@ -469,6 +469,104 @@ export async function signContract(
   const result = await client.POST('/contracts/{contractId}/sign', {
     params: { path: { contractId } },
     body: { party, ...(signature != null && signature !== '' ? { signature } : {}) },
+  })
+  return unwrap(result)
+}
+
+// ---------- Претензии и обеспечение ----------
+
+export type Claim = components['schemas']['Claim']
+export type Security = components['schemas']['Security']
+export type ClaimStatus = NonNullable<Claim['status']>
+export type SecurityStatus = components['schemas']['SecurityStatus']
+export type SecurityKind = NonNullable<Security['kind']>
+
+/** Стадия исполнения, на которой выставлена претензия. */
+export type ClaimStage = NonNullable<Claim['stage']>
+
+/** Исход разбирательства по претензии. */
+export type ClaimOutcome = NonNullable<
+  NonNullable<operations['resolveClaim']['requestBody']>['content']['application/json']['outcome']
+>
+
+export interface ClaimsQuery {
+  contract_id?: string
+  status?: ClaimStatus
+  cursor?: string
+  limit?: number
+}
+
+/**
+ * Претензии компании (GET /claims): и как заказчика, и как исполнителя —
+ * разбирательство видят обе стороны. Выставляет и урегулирует претензию
+ * только заказчик.
+ */
+export async function listClaims(query: ClaimsQuery = {}) {
+  const result = await client.GET('/claims', { params: { query } })
+  return unwrap(result)
+}
+
+/**
+ * Претензия по договору (POST /claims): работы приостанавливаются, аукцион
+ * переходит в статус «Претензия». Стадия должна совпадать с текущей стадией
+ * исполнения (approve / in_work / done_by_performer), иначе 409.
+ */
+export async function createClaim(input: {
+  contract_id: string
+  stage: ClaimStage
+  reason: string
+  description?: string
+  amount_minor: number
+}): Promise<Claim> {
+  const result = await client.POST('/claims', { body: input })
+  return unwrap(result)
+}
+
+/**
+ * Урегулирование претензии (POST /claims/{id}/resolve): отклонена или
+ * урегулирована — работы продолжаются; удовлетворена — исполнение закрывается
+ * по претензии; расторжение — аукцион отменяется.
+ */
+export async function resolveClaim(
+  claimId: string,
+  outcome: ClaimOutcome,
+  resolution?: string,
+): Promise<Claim> {
+  const result = await client.POST('/claims/{claimId}/resolve', {
+    params: { path: { claimId } },
+    body: resolution != null && resolution !== '' ? { outcome, resolution } : { outcome },
+  })
+  return unwrap(result)
+}
+
+export interface SecuritiesQuery {
+  kind?: SecurityKind
+  status?: SecurityStatus
+  cursor?: string
+  limit?: number
+}
+
+/**
+ * Обеспечение компании (GET /securities): по своим процедурам (как заказчик)
+ * и внесённое ею (как исполнитель).
+ */
+export async function listSecurities(query: SecuritiesQuery = {}) {
+  const result = await client.GET('/securities', { params: { query } })
+  return unwrap(result)
+}
+
+/** Возврат обеспечения (POST /securities/{id}/release). */
+export async function releaseSecurity(securityId: string) {
+  const result = await client.POST('/securities/{securityId}/release', {
+    params: { path: { securityId } },
+  })
+  return unwrap(result)
+}
+
+/** Удержание обеспечения (POST /securities/{id}/forfeit) — только заказчик. */
+export async function forfeitSecurity(securityId: string) {
+  const result = await client.POST('/securities/{securityId}/forfeit', {
+    params: { path: { securityId } },
   })
   return unwrap(result)
 }

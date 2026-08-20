@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/table'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useCompanyQuery } from '@/features/company/useCompany'
+import { ContractClaims } from './ContractClaims'
+import { ContractSecurities } from './ContractSecurities'
 import { useCursorPage, type CursorPageData } from '@/hooks/useCursorPage'
 import {
   CONTRACT_SCOPE_LABELS,
@@ -271,6 +273,14 @@ function ContractCard({ contractId, onClose }: { contractId: string; onClose: ()
               </TableBody>
             </Table>
           )}
+        </div>
+
+        <div className="border-t pt-4">
+          <ContractClaims contractId={contractId} canManage={isCustomer} />
+        </div>
+
+        <div className="border-t pt-4">
+          <ContractSecurities canForfeit={isCustomer} />
         </div>
 
         {actionError != null && <p className="text-destructive text-sm">{actionError}</p>}

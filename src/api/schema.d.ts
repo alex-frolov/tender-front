@@ -998,6 +998,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/securities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Security deposits of the actor's company (own procedures and own deposits)
+         * @description Returns deposits where the actor's company is the customer (deposits on its
+         *     procedures) or the performer (deposits it provided). Optional filters by kind
+         *     (bid/contract) and status. Access: any employee of the company (agent is the
+         *     minimum role) — releasing and forfeiting stay behind their own permissions.
+         */
+        get: operations["listSecurities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/securities/{securityId}/release": {
         parameters: {
             query?: never;
@@ -1299,7 +1322,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Claims of the actor's company (as customer and as performer)
+         * @description Both sides of a dispute see it: the list returns claims where the actor's
+         *     company is the customer or the performer. Optional filters by contract and
+         *     status. Access: any employee of the company (agent is the minimum role) —
+         *     filing and resolving a claim stay with the customer (claims.manage).
+         */
+        get: operations["listClaims"];
         put?: never;
         /** Create a claim (APPROVE/IN_WORK/DONE_BY_PERFORMER → CLAIM) */
         post: operations["createClaim"];
@@ -2477,15 +2507,51 @@ export interface components {
             id?: string;
             /** Format: uuid */
             contract_id?: string;
+            /** Format: uuid */
+            auction_id?: string | null;
             /** @enum {string} */
             stage?: "approve" | "in_work" | "done_by_performer";
             reason?: string;
+            description?: string | null;
+            /** @description Claim amount, minor units */
             amount_minor?: number;
             /** @enum {string} */
             status?: "draft" | "submitted" | "resolved_rejected" | "resolved_accepted" | "cancelled";
             resolution?: string | null;
             /** Format: date-time */
             resolved_at?: string | null;
+            document_ids?: string[] | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        /**
+         * @description Security deposit for a bid or for contract performance (FR-1.4.1/1.4.2).
+         *     Money is in integer minor units.
+         */
+        Security: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            kind?: "bid" | "contract";
+            /** @description What the deposit secures (bid / contract) */
+            entity_type?: string;
+            /** Format: uuid */
+            entity_id?: string;
+            /** Format: uuid */
+            supplier_id?: string;
+            /** @enum {string} */
+            type?: "blocked_funds" | "guarantee";
+            amount_minor?: number;
+            /** @enum {string} */
+            calculation_basis?: "nmck" | "first_bid";
+            basis_amount_minor?: number | null;
+            currency?: string;
+            status?: components["schemas"]["SecurityStatus"];
+            /** Format: date-time */
+            valid_until?: string | null;
+            external_ref?: string | null;
+            /** Format: date-time */
+            created_at?: string;
         };
         /** @enum {string} */
         PriceBasis: "net" | "gross";
@@ -2675,6 +2741,7 @@ export interface components {
          *     - bid_rejected (409) — the bid failed validation (price/step/limits)
          *     - duplicate_bid (409) — duplicate bid (idempotency)
          *     - auction_not_trade (409) — the auction is not in TRADE
+         *     - auction_window_closed (409) — the trading window is closed by time (planned_end_at has passed) while the auction is still in TRADE
          *     - contract_required (409) — DONE without a valid contract (B2)
          *     - access_denied (409) — closed tender without an active framework contract
          *     - org_pending (403) — the company is not approved by the superadmin: the customer cannot create tenders, the performer cannot submit bids
@@ -4343,7 +4410,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description Bid rejected (code: bid_rejected, duplicate_bid, auction_not_trade) */
+            /** @description Bid rejected (code: bid_rejected, duplicate_bid, auction_not_trade, auction_window_closed) */
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
             429: components["responses"]["RateLimited"];
@@ -4591,6 +4658,39 @@ export interface operations {
             404: components["responses"]["NotFound"];
             /** @description B2 or status (code: contract_required | state_transition_forbidden) */
             409: components["responses"]["Conflict"];
+        };
+    };
+    listSecurities: {
+        parameters: {
+            query?: {
+                kind?: "bid" | "contract";
+                status?: components["schemas"]["SecurityStatus"];
+                /** @description Pagination (OPAQUE cursor from the previous response) */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Security deposit list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["Security"][];
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
         };
     };
     releaseSecurity: {
@@ -5208,6 +5308,39 @@ export interface operations {
                     "application/json": components["schemas"]["ContractStage"];
                 };
             };
+        };
+    };
+    listClaims: {
+        parameters: {
+            query?: {
+                contract_id?: string;
+                status?: "draft" | "submitted" | "resolved_rejected" | "resolved_accepted" | "cancelled";
+                /** @description Pagination (OPAQUE cursor from the previous response) */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Claim list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["Claim"][];
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
         };
     };
     createClaim: {

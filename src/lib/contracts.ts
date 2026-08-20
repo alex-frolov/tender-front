@@ -1,4 +1,4 @@
-import type { components } from '@/api/schema'
+import type { components, operations } from '@/api/schema'
 import type { BadgeVariant } from '@/components/ui/badge'
 
 /** Статус контракта — строго из спеки ContractStatus. */
@@ -72,4 +72,83 @@ export const CONTRACT_TENDER_STATUS_BADGE_VARIANTS: Record<ContractTenderStatus,
   claim: 'danger',
   done_by_claim: 'success',
   terminated: 'danger',
+}
+
+/** Стадия исполнения, на которой выставлена претензия (Claim.stage). */
+export type ClaimStage = NonNullable<components['schemas']['Claim']['stage']>
+
+export const CLAIM_STAGE_LABELS: Record<ClaimStage, string> = {
+  approve: 'Утверждение',
+  in_work: 'В работе',
+  done_by_performer: 'Выполнен исполнителем',
+}
+
+/** Статус претензии (Claim.status). */
+export type ClaimStatus = NonNullable<components['schemas']['Claim']['status']>
+
+export const CLAIM_STATUS_LABELS: Record<ClaimStatus, string> = {
+  draft: 'Черновик',
+  submitted: 'На рассмотрении',
+  resolved_rejected: 'Отклонена',
+  resolved_accepted: 'Удовлетворена',
+  cancelled: 'Договор расторгнут',
+}
+
+export const CLAIM_STATUS_BADGE_VARIANTS: Record<ClaimStatus, BadgeVariant> = {
+  draft: 'neutral',
+  submitted: 'warning',
+  resolved_rejected: 'neutral',
+  resolved_accepted: 'success',
+  cancelled: 'danger',
+}
+
+/**
+ * Исход разбирательства. Отклонение и урегулирование возвращают работы в строй,
+ * удовлетворение закрывает исполнение по претензии, расторжение отменяет
+ * аукцион — формулировки в UI отражают именно это последствие.
+ */
+export type ClaimOutcome = NonNullable<
+  NonNullable<
+    operations['resolveClaim']['requestBody']
+  >['content']['application/json']['outcome']
+>
+
+export const CLAIM_OUTCOME_LABELS: Record<ClaimOutcome, string> = {
+  rejected: 'Отклонить — работы продолжаются',
+  settled: 'Урегулировать — работы продолжаются',
+  accepted: 'Удовлетворить — исполнение закрыто',
+  terminate_contract: 'Расторгнуть договор — аукцион отменяется',
+}
+
+/** Вид обеспечения (Security.kind): заявки или исполнения контракта. */
+export type SecurityKind = NonNullable<components['schemas']['Security']['kind']>
+
+export const SECURITY_KIND_LABELS: Record<SecurityKind, string> = {
+  bid: 'Обеспечение заявки',
+  contract: 'Обеспечение контракта',
+}
+
+/** Способ обеспечения (Security.type). */
+export type SecurityType = NonNullable<components['schemas']['Security']['type']>
+
+export const SECURITY_TYPE_LABELS: Record<SecurityType, string> = {
+  blocked_funds: 'Блокировка средств',
+  guarantee: 'Гарантия',
+}
+
+/** Статус обеспечения (SecurityStatus). */
+export type SecurityStatus = components['schemas']['SecurityStatus']
+
+export const SECURITY_STATUS_LABELS: Record<SecurityStatus, string> = {
+  pending: 'Ожидается',
+  active: 'Внесено',
+  released: 'Возвращено',
+  forfeited: 'Удержано',
+}
+
+export const SECURITY_STATUS_BADGE_VARIANTS: Record<SecurityStatus, BadgeVariant> = {
+  pending: 'warning',
+  active: 'info',
+  released: 'success',
+  forfeited: 'danger',
 }
