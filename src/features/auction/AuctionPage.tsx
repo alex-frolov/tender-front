@@ -30,6 +30,7 @@ import { apiErrorMessage } from '@/lib/errors'
 import { formatDateTime, formatRemaining, formatSeconds } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
 import { AuctionStatusBadge } from './AuctionStatusBadge'
+import { AuctionCancelForm } from './AuctionCancelForm'
 import { AuctionScheduleForm } from './AuctionScheduleForm'
 import { BidComposer } from './BidComposer'
 import { mergeLiveSnapshot } from './liveState'
@@ -276,6 +277,12 @@ export function AuctionPage() {
       {(status === 'new' || status === 'draft' || status === 'agreement') && (
         <AuctionScheduleForm auctionId={auctionId} status={status} />
       )}
+
+      <AuctionCancelForm
+        auctionId={auctionId}
+        tenderId={state?.tender_id}
+        status={status}
+      />
 
       {trading && (
         <Card>

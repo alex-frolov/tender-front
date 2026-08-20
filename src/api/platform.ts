@@ -69,6 +69,26 @@ export async function updatePlatformTimezone(timezone: string): Promise<string |
   return data.timezone_default ?? null
 }
 
+/** Потребление лимитов тенантом за период (GET /usage). */
+export type Usage = operations['getUsage']['responses'][200]['content']['application/json']
+
+/** Период, за который считается потребление (query-параметр `period`). */
+export type UsagePeriod = NonNullable<
+  NonNullable<operations['getUsage']['parameters']['query']>['period']
+>
+
+/**
+ * Потребление лимитов своей компании (GET /usage): запросы по видам действий,
+ * события и доставки вебхуков за сутки или месяц.
+ *
+ * Данные биллинговые, поэтому доступ — от admin компании (agent/manager → 403),
+ * а сотруднику без компании бэкенд отвечает 409: считать потребление не для кого.
+ */
+export async function getUsage(period: UsagePeriod): Promise<Usage> {
+  const result = await client.GET('/usage', { params: { query: { period } } })
+  return unwrap(result)
+}
+
 /** Текущие лимиты: глобальный и по тендерам (GET /rate-limits). */
 export async function getRateLimits(): Promise<RateLimits> {
   const result = await client.GET('/rate-limits')

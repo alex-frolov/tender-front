@@ -155,15 +155,6 @@ export type Lot = components['schemas']['Lot']
 export type LotCreate = components['schemas']['LotCreate']
 export type LotUpdate = components['schemas']['LotUpdate']
 
-/** Список лотов тендера (GET /tenders/{id}/lots). В карточке лоты уже приходят в Tender.lots. */
-export async function listLots(tenderId: string): Promise<Lot[]> {
-  const result = await client.GET('/tenders/{tenderId}/lots', {
-    params: { path: { tenderId } },
-  })
-  const data = await unwrap(result)
-  return data.items ?? []
-}
-
 /**
  * Добавление лота (POST /tenders/{id}/lots, 201 → Lot). Номер назначает бэкенд.
  * Правка доступна до окончания приёма заявок; после добавления сервер проверяет
@@ -289,6 +280,16 @@ export async function verifyCompany(
   return unwrap(result)
 }
 
+/**
+ * Карточка своей компании (GET /companies). Компания резолвится по привязке
+ * пользователя — чужую не отдаст; сотруднику без компании отвечает ошибкой.
+ * Доступно любой роли (минимальная — agent).
+ */
+export async function getMyCompany(): Promise<Company> {
+  const result = await client.GET('/companies')
+  return unwrap(result)
+}
+
 /** Правка реквизитов своей компании (PATCH /companies, только admin → иначе 403). */
 export async function updateCompany(input: {
   legal_name?: string
@@ -298,6 +299,36 @@ export async function updateCompany(input: {
   contacts?: Record<string, unknown>
 }): Promise<Company> {
   const result = await client.PATCH('/companies', { body: input })
+  return unwrap(result)
+}
+
+// ---------- Профиль поставщика ----------
+
+export type SupplierProfile = components['schemas']['SupplierProfile']
+export type SupplierProfileUpdate = components['schemas']['SupplierProfileUpdate']
+
+/**
+ * Профиль поставщика своей компании (GET /suppliers/profile, любая роль).
+ * Профиль создаётся лениво, поэтому у компании, ни разу его не заполнявшей,
+ * ответ приходит с пустыми списками, а не 404.
+ */
+export async function getSupplierProfile(): Promise<SupplierProfile> {
+  const result = await client.GET('/suppliers/profile')
+  return unwrap(result)
+}
+
+/**
+ * Замена профиля поставщика (PUT /suppliers/profile, только admin компании).
+ *
+ * Семантика именно PUT: отсутствие поля в теле бэкенд трактует как пустой
+ * массив (`SupplierProfileUpdateType`), то есть очистку. Поэтому вызывающий
+ * обязан передавать все три списка — в том числе `documents`, которые UI пока
+ * не редактирует: иначе правка категорий молча отвязала бы документы.
+ */
+export async function updateSupplierProfile(
+  input: Required<SupplierProfileUpdate>,
+): Promise<SupplierProfile> {
+  const result = await client.PUT('/suppliers/profile', { body: input })
   return unwrap(result)
 }
 

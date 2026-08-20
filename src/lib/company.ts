@@ -26,3 +26,23 @@ export const COMPANY_TYPE_LABELS: Record<CompanyType, string> = {
   supplier: 'Поставщик',
   both: 'Заказчик и поставщик',
 }
+
+/** Статус проверки поставщика (SupplierProfile.verification_status). */
+export type SupplierVerificationStatus = NonNullable<
+  components['schemas']['SupplierProfile']['verification_status']
+>
+
+export const SUPPLIER_VERIFICATION_LABELS: Record<SupplierVerificationStatus, string> = {
+  unverified: 'Не проверен',
+  pending: 'На проверке',
+  verified: 'Проверен',
+}
+
+export const SUPPLIER_VERIFICATION_BADGE_VARIANTS: Record<
+  SupplierVerificationStatus,
+  BadgeVariant
+> = {
+  unverified: 'neutral',
+  pending: 'warning',
+  verified: 'success',
+}

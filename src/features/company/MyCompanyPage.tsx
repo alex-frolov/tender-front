@@ -16,6 +16,8 @@ import {
 } from '@/lib/company'
 import { apiErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
+import { CompanyUsageCard } from './CompanyUsageCard'
+import { SupplierProfileCard } from './SupplierProfileCard'
 
 /** Пара «ключ — значение» для редактора контактов (contacts — свободный словарь строк). */
 interface ContactRow {
@@ -39,10 +41,13 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * Моя компания (/my-company): реквизиты из GET /users/me → company и форма
- * правки PATCH /companies. Правка — только admin (иначе бэкенд вернёт 403),
- * поэтому для остальных ролей форма скрыта. ИНН, тип и статус верификации
+ * Моя компания (/my-company): реквизиты из GET /companies и форма правки
+ * PATCH /companies. Правка — только admin (иначе бэкенд вернёт 403), поэтому
+ * для остальных ролей форма скрыта. ИНН, тип и статус верификации
  * не редактируются (их нет в CompanyUpdate).
+ *
+ * Ниже реквизитов — профиль поставщика (для компаний, которые продают) и
+ * потребление лимитов (только admin: бэкенд считает его биллинговыми данными).
  */
 export function MyCompanyPage() {
   const { user } = useAuth()
@@ -201,6 +206,14 @@ export function MyCompanyPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Профиль поставщика имеет смысл только для продающей стороны: у чистого
+          заказчика он всегда пустой и лишь путает. */}
+      {(company.type === 'supplier' || company.type === 'both') && (
+        <SupplierProfileCard canEdit={canEdit} />
+      )}
+
+      {canEdit && <CompanyUsageCard />}
 
       {saved && (
         <p className="text-sm text-green-700 dark:text-green-400">Реквизиты сохранены.</p>

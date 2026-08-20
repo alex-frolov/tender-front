@@ -20,7 +20,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { deleteUser, inviteUser, listUsers, type CompanyRole } from '@/api/users'
+import {
+  deleteUser,
+  inviteUser,
+  listUsers,
+  updateUser,
+  type AssignableRole,
+  type AssignableStatus,
+  type CompanyRole,
+  type User,
+  type UserUpdate,
+} from '@/api/users'
 import { FullPageSpinner } from '@/components/auth/ProtectedRoute'
 import { useAuth } from '@/features/auth/AuthContext'
 import { apiErrorMessage } from '@/lib/errors'
@@ -32,6 +42,21 @@ import {
 
 /** Доступные роли при приглашении (default — agent, как в контракте). */
 const INVITE_ROLES: readonly CompanyRole[] = ['admin', 'manager', 'agent']
+
+/** Роли, назначаемые при правке: platform_admin через API не выдаётся. */
+const ASSIGNABLE_ROLES: readonly AssignableRole[] = ['admin', 'manager', 'agent']
+
+/**
+ * Статусы, назначаемые вручную. Их всего два: `invited` и `email_pending`
+ * из `User.verification_status` — этапы регистрации, их проставляет сам
+ * бэкенд, а админ может только активировать или заблокировать сотрудника.
+ */
+const ASSIGNABLE_STATUSES: readonly AssignableStatus[] = ['active', 'blocked']
+
+const STATUS_LABELS: Record<AssignableStatus, string> = {
+  active: 'Активен',
+  blocked: 'Заблокирован',
+}
 
 /**
  * Управление пользователями компании (только admin). Роут /users:
@@ -49,6 +74,14 @@ export function UsersPage() {
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  const [editUser, setEditUser] = useState<User | null>(null)
+  const [editRole, setEditRole] = useState<AssignableRole>('agent')
+  // 'keep' — не трогать статус: у приглашённого и ждущего подтверждения почты
+  // сотрудника статус ведёт сам бэкенд, и назначать ему active вручную значило бы
+  // протащить его через регистрацию мимо подтверждения почты.
+  const [editStatus, setEditStatus] = useState<AssignableStatus | 'keep'>('keep')
+  const [editError, setEditError] = useState<string | null>(null)
+
   // Запрос делаем только для admin: для остальных ролей это 403, а запрос не нужен.
   const usersQuery = useQuery({
     queryKey: ['users'],
@@ -65,6 +98,13 @@ export function UsersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ userId, ...input }: { userId: string } & UserUpdate) => updateUser(userId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
     },
@@ -131,6 +171,31 @@ export function UsersPage() {
     }
   }
 
+  function openEdit(target: User): void {
+    setEditUser(target)
+    setEditRole(target.role === 'platform_admin' || target.role == null ? 'agent' : target.role)
+    const status = target.verification_status
+    setEditStatus(status === 'active' || status === 'blocked' ? status : 'keep')
+    setEditError(null)
+  }
+
+  async function handleEditSubmit(event: FormEvent): Promise<void> {
+    event.preventDefault()
+    if (editUser?.id == null) return
+    setEditError(null)
+    try {
+      await updateMutation.mutateAsync({
+        userId: editUser.id,
+        role: editRole,
+        ...(editStatus === 'keep' ? {} : { status: editStatus }),
+      })
+      setEditUser(null)
+    } catch (err) {
+      // 409: последнего активного админа нельзя понизить или заблокировать.
+      setEditError(apiErrorMessage(err))
+    }
+  }
+
   const currentUserId = user.id
   const items = usersQuery.data ?? []
 
@@ -140,7 +205,7 @@ export function UsersPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Пользователи</h1>
           <p className="text-muted-foreground text-sm">
-            Сотрудники вашей компании: роли, статус верификации и удаление.
+            Сотрудники вашей компании: роли, статус верификации, правка и удаление.
           </p>
         </div>
         <Button onClick={openInvite}>Пригласить</Button>
@@ -203,16 +268,24 @@ export function UsersPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         {isSelf ? (
+                          // Свою роль и статус админ не меняет: снять себе права
+                          // в один клик — верный способ запереть себя снаружи,
+                          // а имя правится в профиле (PATCH /users/me).
                           <span className="text-muted-foreground text-xs">Это вы</span>
                         ) : (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={deleteMutation.isPending}
-                            onClick={() => void handleDelete(item)}
-                          >
-                            Удалить
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
+                              Изменить
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={deleteMutation.isPending}
+                              onClick={() => void handleDelete(item)}
+                            >
+                              Удалить
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
@@ -222,6 +295,84 @@ export function UsersPage() {
             </Table>
           </CardContent>
         </Card>
+      )}
+
+      {editUser != null && (
+        <div
+          className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setEditUser(null)}
+        >
+          <Card className="w-full max-w-md" onClick={(event) => event.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                {editUser.name || editUser.email || 'Сотрудник'}
+              </CardTitle>
+              <CardDescription>
+                Роль определяет права в процедурах, блокировка закрывает вход в аккаунт.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleEditSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Роль</label>
+                  <Select
+                    value={editRole}
+                    onValueChange={(value) => setEditRole(value as AssignableRole)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ASSIGNABLE_ROLES.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {ROLE_LABELS[role]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Статус</label>
+                  <Select
+                    value={editStatus}
+                    onValueChange={(value) =>
+                      setEditStatus(value === 'keep' ? 'keep' : (value as AssignableStatus))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="keep">Не менять</SelectItem>
+                      {ASSIGNABLE_STATUSES.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {STATUS_LABELS[status]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-muted-foreground text-xs">
+                    Сейчас:{' '}
+                    {VERIFICATION_LABELS[editUser.verification_status ?? 'active'] ??
+                      editUser.verification_status}
+                  </p>
+                </div>
+
+                {editError != null && <p className="text-destructive text-sm">{editError}</p>}
+
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="ghost" onClick={() => setEditUser(null)}>
+                    Отмена
+                  </Button>
+                  <Button type="submit" disabled={updateMutation.isPending}>
+                    {updateMutation.isPending ? 'Сохраняем…' : 'Сохранить'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {inviteOpen && (

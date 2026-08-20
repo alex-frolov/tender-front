@@ -83,6 +83,33 @@ const FINISHED_STATUSES: readonly AuctionStatus[] = [
 export function isAuctionFinished(status: AuctionStatus | undefined): boolean {
   return status != null && FINISHED_STATUSES.includes(status)
 }
+
+/**
+ * Статусы, из которых аукцион ещё можно отменить (переход `cancel` в
+ * workflow бэкенда: draft/agreement/new/scheduled/trade/paused/choice/
+ * approve/in_work/claim → cancelled).
+ *
+ * Терминальные (done, done_by_performer, done_by_claim, cancelled, expired,
+ * deleted) отмену не принимают — оттуда бэкенд отвечает 409
+ * `state_transition_forbidden`, поэтому кнопку там не показываем.
+ */
+const CANCELLABLE_STATUSES: readonly AuctionStatus[] = [
+  'draft',
+  'agreement',
+  'new',
+  'scheduled',
+  'trade',
+  'paused',
+  'choice',
+  'approve',
+  'in_work',
+  'claim',
+]
+
+export function isAuctionCancellable(status: AuctionStatus | undefined): boolean {
+  return status != null && CANCELLABLE_STATUSES.includes(status)
+}
+
 /** Тип аукциона (AuctionType) — русские подписи. */
 export type AuctionType = components['schemas']['AuctionType']
 

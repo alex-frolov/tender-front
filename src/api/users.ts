@@ -33,6 +33,30 @@ export async function inviteUser(input: {
   return unwrap(result)
 }
 
+/**
+ * Правка пользователя компании (PATCH /users/{userId}, только admin).
+ * Роль и статус — админские поля; тело берётся из схемы операции, поэтому
+ * набор допустимых значений задаёт контракт, а не фронт. Понижение или
+ * блокировка последнего активного админа → 409.
+ */
+export type UserUpdate = NonNullable<
+  operations['updateUser']['requestBody']
+>['content']['application/json']
+
+/** Роль, назначаемая при правке (platform_admin через API не выдаётся). */
+export type AssignableRole = NonNullable<UserUpdate['role']>
+
+/** Статус, назначаемый при правке: активен или заблокирован. */
+export type AssignableStatus = NonNullable<UserUpdate['status']>
+
+export async function updateUser(userId: string, input: UserUpdate): Promise<User> {
+  const result = await client.PATCH('/users/{userId}', {
+    params: { path: { userId } },
+    body: input,
+  })
+  return unwrap(result)
+}
+
 /** Мягкое удаление пользователя (DELETE /users/{userId}, только admin). */
 export async function deleteUser(userId: string): Promise<void> {
   const result = await client.DELETE('/users/{userId}', {
