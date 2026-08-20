@@ -27,6 +27,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ExportButton } from '@/features/dashboard/ExportButton'
+import { FavoriteToggle } from '@/features/tenders/FavoriteToggle'
+import { SavedSearches } from '@/features/tenders/SavedSearches'
 import { useCursorPage, type CursorPageData } from '@/hooks/useCursorPage'
 import { apiErrorMessage } from '@/lib/errors'
 import {
@@ -447,6 +449,20 @@ export function TendersPage() {
         </div>
       </form>
 
+      {/* Сохранённый поиск — это набор фильтров, а фильтры живут в URL:
+          применение сохранённого поиска просто переписывает query-строку. */}
+      <SavedSearches
+        currentFilters={apiQuery as Record<string, unknown>}
+        onApply={(saved) => {
+          const params = new URLSearchParams()
+          for (const [key, value] of Object.entries(saved)) {
+            if (value == null || value === '') continue
+            params.set(key, String(value))
+          }
+          setSearchParams(params)
+        }}
+      />
+
       {isError ? (
         <Card>
           <CardContent className="space-y-4">
@@ -549,9 +565,14 @@ export function TendersPage() {
                           className="text-right"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          <Button asChild variant="outline" size="sm">
-                            <Link to={href}>Открыть</Link>
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            {tender.id != null && (
+                              <FavoriteToggle entityType="tender" entityId={tender.id} />
+                            )}
+                            <Button asChild variant="outline" size="sm">
+                              <Link to={href}>Открыть</Link>
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )

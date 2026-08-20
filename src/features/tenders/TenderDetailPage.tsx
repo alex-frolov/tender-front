@@ -14,6 +14,7 @@ import {
 import { TenderBids } from '@/features/bids/TenderBids'
 import { TenderActions } from '@/features/tenders/TenderActions'
 import { TenderLots } from '@/features/tenders/TenderLots'
+import { TenderQuestions } from '@/features/tenders/TenderQuestions'
 import { apiErrorMessage } from '@/lib/errors'
 import {
   ACCESS_TYPE_LABELS,
@@ -294,6 +295,8 @@ export function TenderDetailPage() {
       <TenderLots tender={tender} />
 
       <TenderBids tender={tender} />
+
+      <TenderQuestions tender={tender} />
     </div>
   )
 }
