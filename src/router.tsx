@@ -16,6 +16,7 @@ import { AuctionPage } from '@/features/auction/AuctionPage'
 import { AuctionsPage } from '@/features/auction/AuctionsPage'
 import { ContractsPage } from '@/features/contracts/ContractsPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { ProcurementPlansPage } from '@/features/planning/ProcurementPlansPage'
 import { CompaniesAdminPage } from '@/features/company/CompaniesAdminPage'
 import { MyCompanyPage } from '@/features/company/MyCompanyPage'
 import { NotificationsPage } from '@/features/notifications/NotificationsPage'
@@ -71,6 +72,7 @@ export const router = createBrowserRouter([
           { path: 'auctions', element: <AuctionsPage /> },
           { path: 'auctions/:auctionId', element: <AuctionPage /> },
           { path: 'contracts', element: <ContractsPage /> },
+          { path: 'procurement-plans', element: <ProcurementPlansPage /> },
           { path: 'my-company', element: <MyCompanyPage /> },
           // Реестр компаний площадки — только platform_admin (сама страница
           // показывает заглушку остальным ролям, API отдаёт им 403).

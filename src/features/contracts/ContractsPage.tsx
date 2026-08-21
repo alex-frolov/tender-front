@@ -33,6 +33,7 @@ import { ContractClaims } from './ContractClaims'
 import { ContractCreateForm } from './ContractCreateForm'
 import { ContractStructure } from './ContractStructure'
 import { ContractDocuments } from './ContractDocuments'
+import { SupplierCard } from '@/features/company/SupplierCard'
 import { ContractSecurities } from './ContractSecurities'
 import { useCursorPage, type CursorPageData } from '@/hooks/useCursorPage'
 import {
@@ -232,6 +233,15 @@ function ContractCard({ contractId, onClose }: { contractId: string; onClose: ()
         </div>
 
         <ContractStructure contract={contract} isCustomer={isCustomer} />
+
+        {/* Карточка исполнителя: заказчику полезно видеть рейтинг и проверки
+            стороны, с которой он подписывает договор. Своей компании
+            показывать её же профиль незачем — он есть в «Моей компании». */}
+        {isCustomer && !isSupplier && contract.supplier_id != null && (
+          <div className="border-t pt-4">
+            <SupplierCard supplierId={contract.supplier_id} />
+          </div>
+        )}
 
         <div className="border-t pt-4">
           <ContractDocuments contractId={contractId} isParty={isCustomer || isSupplier} />

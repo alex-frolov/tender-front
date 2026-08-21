@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from
 import {
   Bell,
   Building2,
+  CalendarRange,
   ChevronDown,
   FileCheck2,
   FileText,
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { to: '/tenders', label: 'Тендеры', icon: FileText },
   { to: '/auctions', label: 'Аукционы', icon: Gavel },
   { to: '/contracts', label: 'Контракты', icon: FileCheck2 },
+  { to: '/procurement-plans', label: 'Планы закупок', icon: CalendarRange },
   { to: '/my-company', label: 'Моя компания', icon: Building2 },
   { to: '/notifications', label: 'Уведомления', icon: Bell },
   { to: '/users', label: 'Пользователи', icon: Users, adminOnly: true },

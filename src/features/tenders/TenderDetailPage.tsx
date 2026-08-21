@@ -16,8 +16,9 @@ import { TenderActions } from '@/features/tenders/TenderActions'
 import { TenderLots } from '@/features/tenders/TenderLots'
 import { useAuth } from '@/features/auth/AuthContext'
 import { DocumentsCard } from '@/features/documents/DocumentsCard'
+import { TenderAccessNotice } from '@/features/tenders/TenderAccessNotice'
 import { TenderQuestions } from '@/features/tenders/TenderQuestions'
-import { canManageTender } from '@/lib/tenderAccess'
+import { canManageTender, isTenderCustomer } from '@/lib/tenderAccess'
 import { apiErrorMessage } from '@/lib/errors'
 import {
   ACCESS_TYPE_LABELS,
@@ -299,6 +300,12 @@ export function TenderDetailPage() {
       <TenderLots tender={tender} />
 
       <TenderBids tender={tender} />
+
+      {/* Закрытая процедура: участнику объясняем, почему участие недоступно.
+          Заказчику это не нужно — к своей процедуре он допущен по определению. */}
+      {tender.access_type === 'contract_holders' && !isTenderCustomer(tender, user) && (
+        <TenderAccessNotice tenderId={tender.id ?? ''} />
+      )}
 
       <DocumentsCard
         entityType="tender"
