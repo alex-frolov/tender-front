@@ -14,7 +14,10 @@ import {
 import { TenderBids } from '@/features/bids/TenderBids'
 import { TenderActions } from '@/features/tenders/TenderActions'
 import { TenderLots } from '@/features/tenders/TenderLots'
+import { useAuth } from '@/features/auth/AuthContext'
+import { DocumentsCard } from '@/features/documents/DocumentsCard'
 import { TenderQuestions } from '@/features/tenders/TenderQuestions'
+import { canManageTender } from '@/lib/tenderAccess'
 import { apiErrorMessage } from '@/lib/errors'
 import {
   ACCESS_TYPE_LABELS,
@@ -74,6 +77,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
  */
 export function TenderDetailPage() {
   const { tenderId } = useParams<{ tenderId: string }>()
+  const { user } = useAuth()
   // Форма создания уводит сюда, если черновик создался, а публикация упала:
   // тендер существует, и повторить публикацию можно кнопкой в TenderActions.
   const location = useLocation()
@@ -295,6 +299,13 @@ export function TenderDetailPage() {
       <TenderLots tender={tender} />
 
       <TenderBids tender={tender} />
+
+      <DocumentsCard
+        entityType="tender"
+        entityId={tender.id ?? ''}
+        canUpload={canManageTender(tender, user)}
+        description="Документация процедуры. Приватные документы видит только компания-владелец."
+      />
 
       <TenderQuestions tender={tender} />
     </div>

@@ -17,6 +17,7 @@ import { apiErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { AccessDeniedCard } from './AccessDeniedCard'
 import { ContractTypesCard } from './ContractTypesCard'
+import { DocumentTypesCard } from './DocumentTypesCard'
 
 const TIMEZONE_KEY = ['platform-timezone'] as const
 const RATE_LIMITS_KEY = ['rate-limits'] as const
@@ -285,6 +286,8 @@ export function PlatformSettingsPage() {
       </Card>
 
       <ContractTypesCard />
+
+      <DocumentTypesCard />
     </div>
   )
 }

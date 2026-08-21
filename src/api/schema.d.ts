@@ -1149,7 +1149,18 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Documents attached to one entity
+         * @description Documents of a tender, lot, bid, contract or claim, newest first. Both
+         *     parameters are required: documents exist only in the context of an entity,
+         *     and a platform-wide listing would be a hole in tenant isolation.
+         *
+         *     Visibility (FR-1.2.6) is applied in the query, not after it: the actor's own
+         *     company sees all of its documents, another company's are visible only when
+         *     public. Access: the `tenders.board.view` permission, same as reading a single
+         *     document.
+         */
+        get: operations["listDocuments"];
         put?: never;
         /** Upload a document (multipart) */
         post: operations["uploadDocument"];
@@ -4964,6 +4975,35 @@ export interface operations {
                     "application/json": components["schemas"]["Complaint"];
                 };
             };
+        };
+    };
+    listDocuments: {
+        parameters: {
+            query: {
+                entity_type: "tender" | "lot" | "bid" | "contract" | "claim";
+                entity_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Documents of the entity */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["Document"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
         };
     };
     uploadDocument: {

@@ -32,6 +32,7 @@ import { useCompanyQuery } from '@/features/company/useCompany'
 import { ContractClaims } from './ContractClaims'
 import { ContractCreateForm } from './ContractCreateForm'
 import { ContractStructure } from './ContractStructure'
+import { ContractDocuments } from './ContractDocuments'
 import { ContractSecurities } from './ContractSecurities'
 import { useCursorPage, type CursorPageData } from '@/hooks/useCursorPage'
 import {
@@ -231,6 +232,10 @@ function ContractCard({ contractId, onClose }: { contractId: string; onClose: ()
         </div>
 
         <ContractStructure contract={contract} isCustomer={isCustomer} />
+
+        <div className="border-t pt-4">
+          <ContractDocuments contractId={contractId} isParty={isCustomer || isSupplier} />
+        </div>
 
         <div className="border-t pt-4">
           <ContractClaims contractId={contractId} canManage={isCustomer} />
