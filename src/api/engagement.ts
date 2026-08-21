@@ -13,8 +13,8 @@ export type ComplaintStatus = NonNullable<Complaint['status']>
  * Право `tenders.qa` настраиваемое: admin — всегда, manager и agent — по
  * настройке площадки, поэтому 403 здесь штатный ответ.
  *
- * Ответ заказчика приходит полем `answer`, но проставить его через API нельзя:
- * эндпоинта ответа в контракте нет (см. «Чего ещё нет» в CLAUDE.md).
+ * Ответ заказчика приходит полем `answer` и проставляется через
+ * `answerQuestion` — отвечает только заказчик процедуры.
  */
 export async function listQuestions(tenderId: string): Promise<Question[]> {
   const result = await client.GET('/tenders/{tenderId}/questions', {
@@ -37,11 +37,44 @@ export async function askQuestion(
 }
 
 /**
+ * Публикация ответа заказчика (POST /tenders/{id}/questions/{questionId}/answer).
+ *
+ * Отвечать может только заказчик процедуры; у остальных — 404 (по коду ответа
+ * нельзя выяснить, существует ли вопрос). Повторный ответ допустим: разъяснение
+ * уточняют, момент публикации при этом обновляется.
+ */
+export async function answerQuestion(
+  tenderId: string,
+  questionId: string,
+  answer: string,
+): Promise<Question> {
+  const result = await client.POST('/tenders/{tenderId}/questions/{questionId}/answer', {
+    params: { path: { tenderId, questionId } },
+    body: { answer },
+  })
+  return unwrap(result)
+}
+
+export interface ComplaintsQuery {
+  tender_id?: string
+  status?: ComplaintStatus
+  cursor?: string
+  limit?: number
+}
+
+/**
+ * Жалобы, видимые компании (GET /complaints): поданные ею и поданные на её
+ * процедуры — разбирательство двустороннее. Охват «мои процедуры» строит
+ * бэкенд по своим тендерам, параметром его не расширить.
+ */
+export async function listComplaints(query: ComplaintsQuery = {}) {
+  const result = await client.GET('/complaints', { params: { query } })
+  return unwrap(result)
+}
+
+/**
  * Жалоба на процедуру (POST /tenders/{id}/complaints). Основание (`ground`) —
  * обязательное отдельное поле: по нему жалоба разбирается, текст его не заменяет.
- *
- * Списка жалоб в контракте нет — созданная жалоба возвращается ответом и после
- * перезагрузки страницы во фронте недоступна.
  */
 export async function fileComplaint(
   tenderId: string,

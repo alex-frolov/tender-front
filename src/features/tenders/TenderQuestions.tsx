@@ -1,7 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { MessageSquare, ShieldAlert } from 'lucide-react'
-import { askQuestion, fileComplaint, listQuestions, type Complaint } from '@/api/engagement'
+import {
+  answerQuestion,
+  askQuestion,
+  fileComplaint,
+  listComplaints,
+  listQuestions,
+} from '@/api/engagement'
 import type { components } from '@/api/schema'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,6 +22,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/features/auth/AuthContext'
+import { COMPLAINT_STATUS_BADGE_VARIANTS, COMPLAINT_STATUS_LABELS } from '@/lib/enums'
 import { apiErrorMessage, isApiError } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { isTenderCustomer } from '@/lib/tenderAccess'
@@ -32,14 +39,13 @@ const WHOLE_TENDER = 'all'
  * Право `tenders.qa` настраиваемое (admin — всегда, manager и agent — по
  * настройке площадки), поэтому 403 объясняем текстом, а не красной ошибкой.
  *
- * Ответы заказчика показываются, но задать их из UI нельзя: эндпоинта ответа
- * в API нет. Жалобу можно подать, но нельзя перечитать — списка жалоб в API
- * тоже нет, поэтому созданная жалоба показывается сразу после отправки и
- * живёт до перезагрузки страницы.
+ * Отвечает на вопросы только заказчик процедуры — форма ответа показывается
+ * ему, остальным виден сам ответ. Жалобы видят обе стороны разбирательства:
+ * и подавший, и заказчик.
  *
- * Кнопка жалобы скрыта у заказчика по смыслу, а не по правам: API принимает
- * жалобу и от него (проверено — 201), но жаловаться на собственную процедуру
- * незачем.
+ * Кнопка подачи жалобы скрыта у заказчика по смыслу, а не по правам: API
+ * принимает жалобу и от него (проверено — 201), но жаловаться на собственную
+ * процедуру незачем.
  */
 export function TenderQuestions({ tender }: { tender: Tender }) {
   const queryClient = useQueryClient()
@@ -61,7 +67,9 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
   const [ground, setGround] = useState('')
   const [complaintText, setComplaintText] = useState('')
   const [complaintError, setComplaintError] = useState<string | null>(null)
-  const [filed, setFiled] = useState<Complaint | null>(null)
+
+  const [answeringId, setAnsweringId] = useState<string | null>(null)
+  const [answerText, setAnswerText] = useState('')
 
   const askMutation = useMutation({
     mutationFn: (input: { text: string; lot_id?: string }) => askQuestion(tenderId, input),
@@ -72,7 +80,25 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
   const complaintMutation = useMutation({
     mutationFn: (input: { text: string; ground: string; lot_id?: string }) =>
       fileComplaint(tenderId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['complaints', tenderId] })
+    },
   })
+  const answerMutation = useMutation({
+    mutationFn: ({ questionId, answer }: { questionId: string; answer: string }) =>
+      answerQuestion(tenderId, questionId, answer),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['questions', tenderId] })
+    },
+  })
+
+  // Жалобы по этому тендеру: список видят обе стороны разбирательства.
+  const complaintsQuery = useQuery({
+    queryKey: ['complaints', tenderId],
+    queryFn: () => listComplaints({ tender_id: tenderId }),
+    enabled: tenderId !== '',
+  })
+  const complaints = complaintsQuery.data?.items ?? []
 
   const lots = tender.lots ?? []
   const questions = questionsQuery.data ?? []
@@ -105,17 +131,31 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
       return
     }
     try {
-      const complaint = await complaintMutation.mutateAsync({
+      await complaintMutation.mutateAsync({
         ground: ground.trim(),
         text: complaintText.trim(),
         ...(lotId === WHOLE_TENDER ? {} : { lot_id: lotId }),
       })
-      setFiled(complaint)
       setComplaintOpen(false)
       setGround('')
       setComplaintText('')
     } catch (err) {
       setComplaintError(apiErrorMessage(err))
+    }
+  }
+
+  async function handleAnswer(questionId: string): Promise<void> {
+    setAskError(null)
+    if (answerText.trim() === '') {
+      setAskError('Введите текст ответа.')
+      return
+    }
+    try {
+      await answerMutation.mutateAsync({ questionId, answer: answerText.trim() })
+      setAnsweringId(null)
+      setAnswerText('')
+    } catch (err) {
+      setAskError(apiErrorMessage(err))
     }
   }
 
@@ -172,6 +212,54 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
                 ) : (
                   <p className="text-muted-foreground text-xs">Ответа пока нет.</p>
                 )}
+
+                {isCustomer && question.id != null && answeringId !== question.id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAnsweringId(question.id ?? null)
+                      // Правка разъяснения начинается с текущего текста —
+                      // повторный ответ допустим и чаще всего это уточнение.
+                      setAnswerText(question.answer ?? '')
+                    }}
+                  >
+                    {question.answer != null && question.answer !== ''
+                      ? 'Уточнить ответ'
+                      : 'Ответить'}
+                  </Button>
+                )}
+
+                {isCustomer && answeringId === question.id && (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={answerText}
+                      onChange={(event) => setAnswerText(event.target.value)}
+                      maxLength={4000}
+                      rows={3}
+                      aria-label="Текст ответа"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        disabled={answerMutation.isPending}
+                        onClick={() => void handleAnswer(question.id ?? '')}
+                      >
+                        {answerMutation.isPending ? 'Публикуем…' : 'Опубликовать ответ'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setAnsweringId(null)
+                          setAnswerText('')
+                        }}
+                      >
+                        Отмена
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {question.published_at != null && (
                   <div className="text-muted-foreground text-xs">
                     Опубликован {formatDateTime(question.published_at)}
@@ -225,17 +313,35 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
           </form>
         )}
 
-        {filed != null && (
-          <div className="rounded-lg border p-3 text-sm">
-            <div className="mb-1 flex items-center gap-2">
+        {complaints.length > 0 && (
+          <div className="space-y-2 border-t pt-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
               <ShieldAlert className="size-4" />
-              <span className="font-medium">Жалоба подана</span>
-              {filed.status != null && <Badge variant="warning">{filed.status}</Badge>}
+              Жалобы по процедуре
             </div>
-            <p className="text-muted-foreground text-xs">
-              Номер {filed.id?.slice(0, 8)}. Списка жалоб в API пока нет, поэтому после
-              перезагрузки страницы она здесь не отобразится.
-            </p>
+            {complaints.map((complaint) => (
+              <div key={complaint.id} className="space-y-1 rounded-lg border p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <span className="text-sm font-medium">{complaint.ground}</span>
+                  {complaint.status != null && (
+                    <Badge variant={COMPLAINT_STATUS_BADGE_VARIANTS[complaint.status]}>
+                      {COMPLAINT_STATUS_LABELS[complaint.status]}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm">{complaint.text}</p>
+                {complaint.resolution != null && complaint.resolution !== '' && (
+                  <p className="text-muted-foreground text-xs">
+                    Решение: {complaint.resolution}
+                  </p>
+                )}
+                {complaint.created_at != null && (
+                  <div className="text-muted-foreground text-xs">
+                    Подана {formatDateTime(complaint.created_at)}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 

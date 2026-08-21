@@ -1073,6 +1073,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tenders/{tenderId}/questions/{questionId}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer a tender question (customer)
+         * @description Publishes the customer's clarification: the answer and its publication
+         *     time are set together, so a question counts as clarified exactly when
+         *     participants can see the answer. Answering again is allowed — a
+         *     clarification can be corrected, and `published_at` moves with it.
+         *
+         *     Access: the `tenders.qa` permission (participants ask with the same one),
+         *     plus the party check in the service — only the tender's customer may
+         *     answer. A tender of another company and a question from another tender
+         *     are indistinguishable to the caller: both answer 404.
+         */
+        post: operations["answerQuestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/complaints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Complaints visible to the actor's company
+         * @description Both sides of a dispute see it: complaints filed by the company and
+         *     complaints filed against its own procedures. Optional filters by tender
+         *     and status. Access: the same `tenders.qa` permission that files a
+         *     complaint; the scope of "my procedures" is built from the company's own
+         *     tenders, never from a request parameter.
+         */
+        get: operations["listComplaints"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenders/{tenderId}/complaints": {
         parameters: {
             query?: never;
@@ -2336,12 +2388,16 @@ export interface components {
              * @description Company that filed the complaint
              */
             company_id?: string;
+            /** Format: uuid */
+            lot_id?: string | null;
             /** @enum {string} */
             status?: "draft" | "pending" | "resolved";
             text?: string;
             ground?: string;
             document_ids?: string[];
             resolution?: string | null;
+            /** Format: date-time */
+            created_at?: string;
         };
         /** @enum {string} */
         DocumentVisibility: "public" | "private";
@@ -4803,6 +4859,72 @@ export interface operations {
                     "application/json": components["schemas"]["Question"];
                 };
             };
+        };
+    };
+    answerQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenderId: components["parameters"]["TenderId"];
+                questionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    answer: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Answer published */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Question"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    listComplaints: {
+        parameters: {
+            query?: {
+                tender_id?: string;
+                status?: "draft" | "pending" | "resolved";
+                /** @description Pagination (OPAQUE cursor from the previous response) */
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Complaint list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["Complaint"][];
+                        next_cursor?: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
         };
     };
     createComplaint: {

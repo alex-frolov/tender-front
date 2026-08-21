@@ -111,3 +111,18 @@ export const TIMELINE_LABELS: Record<string, string> = {
   auction_start: 'Начало торгов',
   evaluation_end: 'Окончание рассмотрения',
 }
+
+/** Статус жалобы по тендеру (Complaint.status). */
+export type ComplaintStatus = NonNullable<components['schemas']['Complaint']['status']>
+
+export const COMPLAINT_STATUS_LABELS: Record<ComplaintStatus, string> = {
+  draft: 'Черновик',
+  pending: 'На рассмотрении',
+  resolved: 'Рассмотрена',
+}
+
+export const COMPLAINT_STATUS_BADGE_VARIANTS: Record<ComplaintStatus, BadgeVariant> = {
+  draft: 'neutral',
+  pending: 'warning',
+  resolved: 'success',
+}
