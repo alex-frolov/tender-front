@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { CompanyPicker } from '@/features/company/CompanyPicker'
 import { useCompanyQuery } from '@/features/company/useCompany'
 import { CONTRACT_SCOPE_LABELS, CONTRACT_SOURCE_LABELS } from '@/lib/contracts'
 import { apiErrorMessage } from '@/lib/errors'
@@ -38,9 +39,9 @@ function toMinor(value: string): number | null {
  * подставляется его компанией и не редактируется — иначе форма предлагала бы
  * завести договор от чужого имени, который бэкенд всё равно отклонит.
  *
- * `supplier_id` приходится вводить идентификатором: поиска компании по названию
- * в API нет (реестр `GET /admin/companies` доступен только суперадмину), а
- * карточка поставщика запрашивается тоже по id. Подсказка объясняет, где его взять.
+ * Исполнитель выбирается поиском по названию или ИНН (`CompanyPicker`,
+ * `GET /companies/search`) — до появления поиска в это поле приходилось
+ * вводить uuid, взятый вне интерфейса.
  */
 export function ContractCreateForm({
   onCancel,
@@ -207,20 +208,12 @@ export function ContractCreateForm({
               </p>
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="contract-supplier" className="text-sm font-medium">
-                Исполнитель (id компании)
-              </label>
-              <Input
-                id="contract-supplier"
-                value={supplierId}
-                onChange={(event) => setSupplierId(event.target.value)}
-                placeholder="00000000-0000-0000-0000-000000000000"
-              />
-              <p className="text-muted-foreground text-xs">
-                Идентификатор виден в карточке заявки участника.
-              </p>
-            </div>
+            <CompanyPicker
+              label="Исполнитель"
+              value={supplierId}
+              onChange={(companyId) => setSupplierId(companyId)}
+              hint="Ищутся подтверждённые компании по названию или ИНН."
+            />
 
             {source === 'tender' && (
               <div className="space-y-1.5">

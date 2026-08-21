@@ -397,6 +397,28 @@ export async function updateCompany(input: {
   return unwrap(result)
 }
 
+// ---------- Поиск контрагента ----------
+
+export type CompanyBrief = components['schemas']['CompanyBrief']
+
+/**
+ * Поиск компании-контрагента по названию или ИНН (GET /companies/search).
+ *
+ * Нужен там, где в запрос уходит чужой `company_id`: создание договора,
+ * привязка процедуры. Отдаются только подтверждённые компании и только
+ * краткая карточка — реквизиты для выбора стороны не нужны.
+ *
+ * Запрос короче двух символов бэкенд отклоняет: выдача по пустой строке была бы
+ * реестром компаний, а он доступен только суперадмину.
+ */
+export async function searchCompanies(q: string, limit?: number): Promise<CompanyBrief[]> {
+  const result = await client.GET('/companies/search', {
+    params: { query: limit == null ? { q } : { q, limit } },
+  })
+  const data = await unwrap(result)
+  return data.items ?? []
+}
+
 // ---------- Профиль поставщика ----------
 
 export type SupplierProfile = components['schemas']['SupplierProfile']

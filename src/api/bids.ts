@@ -105,3 +105,22 @@ export async function qualifyBid(
   })
   return unwrap(result)
 }
+
+/**
+ * Состав части 2 заявки — приложенные документы
+ * (POST /bids/{bidId}/documents).
+ *
+ * Отдельный вызов, а не поле при подаче: документ прикладывается к сущности
+ * `bid`, то есть появляется только после подачи. Повторная подача для этого
+ * не годится — она заменяет содержимое целиком, а прочитать своё содержимое
+ * до вскрытия нельзя, оно зашифровано.
+ *
+ * Список заменяет прежний целиком; пустой массив очищает часть 2.
+ */
+export async function attachBidDocuments(bidId: string, documentIds: string[]): Promise<Bid> {
+  const result = await client.POST('/bids/{bidId}/documents', {
+    params: { path: { bidId } },
+    body: { document_ids: documentIds },
+  })
+  return unwrap(result)
+}

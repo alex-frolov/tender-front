@@ -298,6 +298,37 @@ export interface paths {
         patch: operations["updateMe"];
         trace?: never;
     };
+    "/companies/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find a counterparty company by name or INN
+         * @description Suggestions for choosing a counterparty where a foreign `company_id` has to
+         *     go into a request — creating a contract, binding a procedure. Without it the
+         *     identifier had to be learned outside the interface: the moderation registry
+         *     (GET /admin/companies) is superadmin-only.
+         *
+         *     Returns approved companies only, in a deliberately narrow shape (id, legal
+         *     name, INN, type): address, contacts, KPP and OGRN are company details and
+         *     are not needed to pick a counterparty. `q` is required and at least two
+         *     characters long — an empty query would be a registry listing, which this
+         *     endpoint is not.
+         *
+         *     Access: any employee of a company (agent is the minimum role).
+         */
+        get: operations["searchCompanies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/companies": {
         parameters: {
             query?: never;
@@ -610,6 +641,39 @@ export interface paths {
         put?: never;
         /** Withdraw a bid (before the deadline; reason required) */
         post: operations["withdrawBid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bids/{bidId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set the documents of bid part 2
+         * @description Documents are attached to the `bid` entity, so they can only exist once the
+         *     bid has been submitted — there is nothing to attach them to beforehand. That
+         *     is why the composition of part 2 is set by its own call rather than at
+         *     submission: re-submitting replaces the payload as a whole (part 1, price),
+         *     and the author cannot read their own payload back before opening, since it is
+         *     encrypted (FR-1.2.2). Adding one file would mean re-entering everything.
+         *
+         *     The list replaces the previous one: part 2 is the set of attachments, not a
+         *     log of additions; an empty array clears it. Every document must belong to
+         *     this bid, otherwise the customer would not be able to open it after opening.
+         *
+         *     Access: the `bids.submit` permission — whoever submits the bid decides its
+         *     attachments. Only the bid's own supplier, and only while bids are being
+         *     accepted.
+         */
+        post: operations["attachBidDocuments"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2050,6 +2114,13 @@ export interface components {
             part1?: {
                 [key: string]: unknown;
             };
+            /**
+             * @description Part 2 (documents). Accepted as given: documents are attached to the `bid`
+             *     entity and cannot exist before the bid does, so at submission there is
+             *     nothing to validate the ids against. The verified path is
+             *     POST /bids/{bidId}/documents, which checks that every document belongs to
+             *     this bid — use it after uploading the files.
+             */
             part2_document_ids?: string[];
             /** @description For competitive procedures */
             price_minor?: number | null;
@@ -2409,6 +2480,18 @@ export interface components {
             resolution?: string | null;
             /** Format: date-time */
             created_at?: string;
+        };
+        /**
+         * @description Narrow company card for counterparty selection (GET /companies/search).
+         *     Deliberately smaller than Company: details are not needed to pick a side.
+         */
+        CompanyBrief: {
+            /** Format: uuid */
+            id?: string;
+            legal_name?: string;
+            inn?: string;
+            /** @enum {string} */
+            type?: "customer" | "supplier" | "both";
         };
         /** @enum {string} */
         DocumentVisibility: "public" | "private";
@@ -3598,6 +3681,35 @@ export interface operations {
             };
         };
     };
+    searchCompanies: {
+        parameters: {
+            query: {
+                /** @description Substring of the legal name or INN, case-insensitive */
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching companies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items?: components["schemas"]["CompanyBrief"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
     getMyCompany: {
         parameters: {
             query?: never;
@@ -4255,6 +4367,39 @@ export interface operations {
                     "application/json": components["schemas"]["Bid"];
                 };
             };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    attachBidDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bidId: components["parameters"]["BidId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    document_ids?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Bid metadata (contents stay encrypted until opening) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Bid"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];

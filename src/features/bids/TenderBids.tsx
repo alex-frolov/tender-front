@@ -27,6 +27,7 @@ import { formatDateTime } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
 import { isTenderCustomer } from '@/lib/tenderAccess'
 import { BidStatusBadge } from './BidStatusBadge'
+import { BidDocuments } from './BidDocuments'
 import { BidSubmitForm } from './BidSubmitForm'
 import { isBidAdmitted, isBidQualifiable } from './bidStatus'
 
@@ -211,6 +212,18 @@ export function TenderBids({ tender }: { tender: Tender }) {
               Заявка ещё не допущена заказчиком — до этого ставки на аукционе не
               принимаются.
             </p>
+          )}
+
+          {/* Часть 2 своей заявки: файлы прикладываются к уже поданной заявке —
+              раньше её просто не существует, прикладывать не к чему. Правка
+              возможна, пока идёт приём и заявка не отозвана. */}
+          {!isCustomer && ownBids.length > 0 && (
+            <div className="px-6 pb-4">
+              <BidDocuments
+                bid={ownBids[0]}
+                canEdit={canAct && accepting && ownBids[0].status === 'submitted'}
+              />
+            </div>
           )}
 
           {firstPageQuery.isLoading ? (
