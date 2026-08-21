@@ -141,11 +141,30 @@ A few decisions worth knowing before reading the code:
 - **Idempotency.** User-triggered mutations send an `Idempotency-Key`, and React Query retries
   reuse the same key, so a retried auction bid can't be counted twice.
 
+## Deployment
+
+The production image is nginx serving the built bundle, with `/api` proxied to the API
+container — one origin for both, which is why the app needs no CORS setup anywhere.
+
+```bash
+cd ../../tender/app && docker compose up -d   # API first: it owns the shared network
+docker compose up -d --build                  # front on :8081
+```
+
+`docker-compose.yml` joins the API's network as an external one (`app_default` by default,
+override with `API_NETWORK`), because nginx resolves the upstream by service name. The
+upstream itself is `API_UPSTREAM` (`web:80`), and `VITE_API_BASE` is a build argument: it is
+inlined into the bundle at build time and defaults to the same-origin `/api/v1`.
+
+Two caching rules matter for a SPA and are set deliberately: hashed assets under `/assets/`
+are immutable for a year, while `index.html` is never cached — a stale copy of it would point
+at asset files that no longer exist after a deploy.
+
 ## Continuous integration
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint, type-check, and build on
-every push to `main` and on every pull request, and uploads the production bundle as an
-artifact.
+every push to `main` and on every pull request, uploads the production bundle as an artifact,
+then builds the production image and validates the nginx template inside it.
 
 `.npmrc` sets `legacy-peer-deps=true` on purpose: `openapi-typescript@7` declares a peer of
 `typescript@^5.x` while this project is on TypeScript 6, and `npm ci` fails without it.

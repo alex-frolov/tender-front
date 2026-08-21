@@ -1,0 +1,41 @@
+# Dev/демо-профиль фронта: nginx со собранной статикой, /api проксируется
+# в контейнер API из соседнего проекта (репозиторий tender).
+#
+# Фронт и API должны быть в одной docker-сети — только тогда nginx резолвит
+# апстрим по имени сервиса. Сеть создаёт compose бэкенда, поэтому здесь она
+# подключается как external: поднимать API отдельно, фронт — сюда.
+#
+#   cd ../../tender/app && docker compose up -d      # API, сеть app_default
+#   docker compose up -d --build                     # фронт на :8081
+#
+# Имя сети зависит от каталога проекта API (docker compose берёт его как
+# префикс). Переопределяется переменной API_NETWORK.
+
+services:
+  front:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: web
+      args:
+        # Same-origin: браузер идёт на /api/v1 этого же nginx, тот проксирует
+        # в API. Для деплоя с API на другом домене — полный URL.
+        VITE_API_BASE: ${VITE_API_BASE:-/api/v1}
+    environment:
+      # Имя и порт сервиса API в общей сети (nginx-контейнер бэкенда).
+      API_UPSTREAM: ${API_UPSTREAM:-web:80}
+    ports:
+      # 8081, чтобы не спорить с API на 8080 при локальном запуске обоих.
+      - "${FRONT_PORT:-8081}:80"
+    networks:
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/index.html"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  api:
+    external: true
+    name: ${API_NETWORK:-app_default}
