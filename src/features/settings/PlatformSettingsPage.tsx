@@ -16,6 +16,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { apiErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { AccessDeniedCard } from './AccessDeniedCard'
+import { ContractTypesCard } from './ContractTypesCard'
 
 const TIMEZONE_KEY = ['platform-timezone'] as const
 const RATE_LIMITS_KEY = ['rate-limits'] as const
@@ -282,6 +283,8 @@ export function PlatformSettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ContractTypesCard />
     </div>
   )
 }

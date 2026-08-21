@@ -2460,7 +2460,7 @@ export interface components {
         /** @enum {string} */
         ContractSource: "tender" | "external";
         ContractType: {
-            /** Format: uuid */
+            /** @description Numeric identifier rendered as a string (contract types are a small platform-wide catalog, not per-tenant records) */
             id?: string;
             code?: string;
             name?: string;
@@ -2468,7 +2468,7 @@ export interface components {
             template_ref?: string | null;
         };
         ContractCreate: {
-            /** Format: uuid */
+            /** @description ContractType.id */
             contract_type_id: string;
             source?: components["schemas"]["ContractSource"];
             /** Format: uuid */
@@ -2540,9 +2540,16 @@ export interface components {
             /** Format: uuid */
             lot_id?: string | null;
             /** Format: uuid */
-            award_id?: string;
+            award_id?: string | null;
             price_net_minor?: number;
             status?: components["schemas"]["ContractTenderStatus"];
+            /**
+             * @description Execution stages of this binding, ordered by number. Present only in
+             *     GET /contracts/{contractId}: the contract list does not show stages,
+             *     and loading them per row would be an N+1. An absent key means "not
+             *     requested", an empty array means "no stages".
+             */
+            stages?: components["schemas"]["ContractStage"][];
         };
         ContractStage: {
             /** Format: uuid */
@@ -5381,7 +5388,7 @@ export interface operations {
                     /** Format: uuid */
                     lot_id?: string | null;
                     /** Format: uuid */
-                    award_id: string;
+                    award_id?: string;
                     price_net_minor: number;
                     vat_rate?: number | null;
                 };

@@ -30,6 +30,8 @@ import {
 import { useAuth } from '@/features/auth/AuthContext'
 import { useCompanyQuery } from '@/features/company/useCompany'
 import { ContractClaims } from './ContractClaims'
+import { ContractCreateForm } from './ContractCreateForm'
+import { ContractStructure } from './ContractStructure'
 import { ContractSecurities } from './ContractSecurities'
 import { useCursorPage, type CursorPageData } from '@/hooks/useCursorPage'
 import {
@@ -38,8 +40,6 @@ import {
   CONTRACT_STATUS_BADGE_VARIANTS,
   CONTRACT_STATUS_LABELS,
   CONTRACT_STATUSES,
-  CONTRACT_TENDER_STATUS_BADGE_VARIANTS,
-  CONTRACT_TENDER_STATUS_LABELS,
   type ContractStatus,
 } from '@/lib/contracts'
 import { apiErrorMessage } from '@/lib/errors'
@@ -169,7 +169,6 @@ function ContractCard({ contractId, onClose }: { contractId: string; onClose: ()
   const canAct = user?.role !== 'agent' && user?.role != null
   const canSend = canAct && contract.status === 'draft'
   const canSign = canAct && contract.status === 'pending_signature' && (isCustomer || isSupplier)
-  const tenders = contract.tenders ?? []
 
   return (
     <Card>
@@ -231,49 +230,7 @@ function ContractCard({ contractId, onClose }: { contractId: string; onClose: ()
           </Field>
         </div>
 
-        <div>
-          <h3 className="mb-2 text-sm font-medium">Привязанные тендеры</h3>
-          {tenders.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Тендеры не привязаны.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Тендер</TableHead>
-                  <TableHead>Лот</TableHead>
-                  <TableHead className="text-right">Сумма без НДС</TableHead>
-                  <TableHead>Статус исполнения</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tenders.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <ShortId value={item.tender_id} />
-                    </TableCell>
-                    <TableCell>
-                      <ShortId value={item.lot_id} />
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {item.price_net_minor != null ? formatMoney(item.price_net_minor) : '—'}
-                    </TableCell>
-                    <TableCell>
-                      {item.status != null ? (
-                        <Badge
-                          variant={CONTRACT_TENDER_STATUS_BADGE_VARIANTS[item.status] ?? 'neutral'}
-                        >
-                          {CONTRACT_TENDER_STATUS_LABELS[item.status] ?? item.status}
-                        </Badge>
-                      ) : (
-                        '—'
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+        <ContractStructure contract={contract} isCustomer={isCustomer} />
 
         <div className="border-t pt-4">
           <ContractClaims contractId={contractId} canManage={isCustomer} />
@@ -339,7 +296,9 @@ function ContractCard({ contractId, onClose }: { contractId: string; onClose: ()
 export function ContractsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const statusFilter = searchParams.get('contract_status') ?? ''
   const apiQuery = useMemo<ContractsQuery>(
@@ -397,12 +356,34 @@ export function ContractsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Контракты</h1>
-        <p className="text-muted-foreground text-sm">
-          Договоры компании: статусы, суммы, подписание.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Контракты</h1>
+          <p className="text-muted-foreground text-sm">
+            Договоры компании: статусы, суммы, подписание.
+          </p>
+        </div>
+        {/* Создаёт договор заказчик (право contracts.create); у агента его нет
+            никогда, поэтому кнопку ему не показываем. */}
+        {user?.role != null && user.role !== 'agent' && !createOpen && (
+          <Button onClick={() => setCreateOpen(true)}>Новый договор</Button>
+        )}
       </div>
+
+      {createOpen && (
+        <ContractCreateForm
+          onCancel={() => setCreateOpen(false)}
+          onCreated={() => {
+            setCreateOpen(false)
+            // Аккумулятор курсорной пагинации наполняется первой страницей
+            // только при смене фильтра, поэтому одной инвалидации мало:
+            // без сброса признака новый договор не появился бы в списке
+            // до перезагрузки страницы.
+            primedFilterKey.current = null
+            reset()
+          }}
+        />
+      )}
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">

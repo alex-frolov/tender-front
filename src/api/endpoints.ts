@@ -473,6 +473,86 @@ export async function signContract(
   return unwrap(result)
 }
 
+// ---------- Типы договоров и структура ----------
+
+export type ContractType = components['schemas']['ContractType']
+export type ContractCreate = components['schemas']['ContractCreate']
+export type ContractTender = components['schemas']['ContractTender']
+export type ContractStage = components['schemas']['ContractStage']
+export type ContractScope = components['schemas']['ContractScope']
+export type ContractSource = components['schemas']['ContractSource']
+
+/**
+ * Каталог типов договоров (GET /contract-types, доступно любой роли).
+ * Идентификатор типа — числовой, отданный строкой: это небольшой справочник
+ * площадки, а не запись тенанта.
+ */
+export async function listContractTypes(): Promise<ContractType[]> {
+  const result = await client.GET('/contract-types')
+  const data = await unwrap(result)
+  return data.items ?? []
+}
+
+/** Новый тип договора (POST /contract-types, только суперадмин площадки). */
+export async function createContractType(input: {
+  code: string
+  name: string
+  is_single_use?: boolean
+}): Promise<ContractType> {
+  const result = await client.POST('/contract-types', { body: input })
+  return unwrap(result)
+}
+
+/**
+ * Создание договора (POST /contracts, 201 → статус draft).
+ *
+ * Два сценария: рамочный договор вне тендера (`source: external`) и договор
+ * по итогам процедуры (`source: tender` + `tender_id`). Создаёт заказчик
+ * (право `contracts.create`), поэтому `customer_id` — всегда его компания.
+ */
+export async function createContract(input: ContractCreate): Promise<Contract> {
+  const result = await client.POST('/contracts', { body: input })
+  return unwrap(result)
+}
+
+/**
+ * Привязка тендера к договору (POST /contracts/{id}/tenders).
+ * Для рамочного договора (`multi_use`) их может быть несколько; у `single_use`
+ * вторая привязка вернёт 409.
+ */
+export async function bindTenderToContract(
+  contractId: string,
+  input: {
+    tender_id: string
+    lot_id?: string
+    award_id?: string
+    price_net_minor: number
+    vat_rate?: number
+  },
+): Promise<ContractTender> {
+  const result = await client.POST('/contracts/{contractId}/tenders', {
+    params: { path: { contractId } },
+    body: input,
+  })
+  return unwrap(result)
+}
+
+/**
+ * Этап исполнения по привязке «договор — тендер»
+ * (POST /contract_tenders/{id}/stages). Номер назначается автоматически,
+ * если не передан. Создают обе стороны договора.
+ */
+export async function createContractStage(
+  contractTenderId: string,
+  input: { title: string; number?: number; amount_minor?: number; due_at?: string },
+): Promise<ContractStage> {
+  const result = await client.POST('/contract_tenders/{contractTenderId}/stages', {
+    params: { path: { contractTenderId } },
+    body: input,
+  })
+  return unwrap(result)
+}
+
 // ---------- Претензии и обеспечение ----------
 
 export type Claim = components['schemas']['Claim']

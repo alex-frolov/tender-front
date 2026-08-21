@@ -152,3 +152,19 @@ export const SECURITY_STATUS_BADGE_VARIANTS: Record<SecurityStatus, BadgeVariant
   released: 'success',
   forfeited: 'danger',
 }
+
+/**
+ * Статус этапа исполнения. В контракте это свободная строка (`type: string`),
+ * а не enum, поэтому мапу нельзя объявить через `Record<TypeFromSchema, string>`:
+ * набор значений задаёт бэкенд (`pending` при создании, `accepted` после
+ * приёмки). Неизвестное значение показываем как есть, а не прячем.
+ */
+const CONTRACT_STAGE_STATUS_LABELS: Record<string, string> = {
+  pending: 'Ожидает',
+  accepted: 'Принят',
+}
+
+export function contractStageStatusLabel(status: string | undefined): string {
+  if (status == null || status === '') return '—'
+  return CONTRACT_STAGE_STATUS_LABELS[status] ?? status
+}
