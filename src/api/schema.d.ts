@@ -414,7 +414,7 @@ export interface paths {
          *         public even for companies that were entitled to take part.
          *
          *     Visibility does not grant participation: submitting a bid to a closed tender
-         *     still requires the contract (409 contract_required) — see
+         *     still requires the contract (409 access_denied) — see
          *     GET /tenders/{tenderId}/access.
          *     Access: tenders.board.view (all company roles).
          */
@@ -622,7 +622,23 @@ export interface paths {
         /** List bids (before opening — metadata only; after — contents by permissions) */
         get: operations["listBids"];
         put?: never;
-        /** Submit a bid; re-submitting for a lot before the deadline replaces it */
+        /**
+         * Submit a bid; re-submitting for a lot before the deadline replaces it
+         * @description Submitting for a lot again before the deadline replaces the previous bid
+         *     (FR-1.2.5); the content is encrypted until opening (FR-1.2.2).
+         *
+         *     A closed tender (access_type=contract_holders) additionally requires an
+         *     active multi_use contract with the customer (FR-1.5.14): without it the
+         *     answer is 409 {access_denied} and the detail names the reason
+         *     (contract_required | contract_expired | contract_terminated), the same
+         *     values as GET /tenders/{tenderId}/access.
+         *
+         *     lot_id is required whenever the tender has lots (422 validation_error
+         *     otherwise) and must be omitted when it has none: admission to trading is
+         *     matched by the (tender, lot) pair, so a lot-less bid would never admit its
+         *     supplier to a lot auction.
+         *     Access: the bids.submit permission.
+         */
         post: operations["submitBid"];
         delete?: never;
         options?: never;
@@ -861,6 +877,9 @@ export interface paths {
          *     bid fixes start_price_minor (price discovery, is_first_price=true).
          *     Admitted participants only and only in TRADE;
          *     idempotency — the Idempotency-Key header.
+         *     For a closed tender (access_type=contract_holders) the contract is
+         *     re-checked here, not only at bid submission: it may have been terminated
+         *     or have expired after the admission — 409 {access_denied}.
          *     Access: the auction.bid permission (admin/manager; agent — 403).
          */
         post: operations["placeAuctionBid"];
@@ -2108,7 +2127,12 @@ export interface components {
         BidCreate: {
             /** Format: uuid */
             supplier_id: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description The lot the bid is for. Required when the tender has lots (422
+             *     otherwise): admission to trading is matched by the (tender, lot)
+             *     pair. Null only for a tender without lots (a single subject).
+             */
             lot_id?: string | null;
             /** @description Consent, characteristics (confidential until opening) */
             part1?: {
@@ -4330,6 +4354,7 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            /** @description Not accepting bids, or a closed tender without a contract (code: state_transition_forbidden | access_denied) */
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
@@ -4629,7 +4654,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description Bid rejected (code: bid_rejected, duplicate_bid, auction_not_trade, auction_window_closed) */
+            /** @description Bid rejected (code: bid_rejected, duplicate_bid, auction_not_trade, auction_window_closed, access_denied) */
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
             429: components["responses"]["RateLimited"];
