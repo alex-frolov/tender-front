@@ -637,6 +637,9 @@ export interface paths {
          *     otherwise) and must be omitted when it has none: admission to trading is
          *     matched by the (tender, lot) pair, so a lot-less bid would never admit its
          *     supplier to a lot auction.
+         *
+         *     A tender created with bids_required=false takes no bids at all — it never
+         *     enters accepting_bids — and answers 409 for every submission.
          *     Access: the bids.submit permission.
          */
         post: operations["submitBid"];
@@ -1926,7 +1929,10 @@ export interface components {
             /** @example RUB */
             currency: string;
         };
-        /** @enum {string} */
+        /**
+         * @description Tender status. accepting_bids only occurs when bids_required=true; a tender that needs no participation bid goes published → bidding directly at bids_start.
+         * @enum {string}
+         */
         TenderStatus: "draft" | "published" | "withdrawn" | "accepting_bids" | "bidding" | "evaluation" | "awarding" | "contract" | "closed" | "cancelled";
         TenderCreate: {
             title: string;
@@ -1953,6 +1959,11 @@ export interface components {
              * @enum {string}
              */
             access_type: "open" | "contract_holders";
+            /**
+             * @description Whether a participation bid is required. true (default) — the classic flow: accepting_bids, opening at bids_end, qualification, and only admitted participants trade. false — no bids at all: the tender has no accepting_bids phase (published → bidding directly at bids_start) and anyone who can see the tender may trade, subject to access_type. Set at creation only.
+             * @default true
+             */
+            bids_required: boolean;
             /** Format: uuid */
             required_contract_type_id?: string | null;
             /** @description Key dates: bids_end, opening, auction_start, evaluation_end */
@@ -2003,6 +2014,8 @@ export interface components {
             status?: components["schemas"]["TenderStatus"];
             /** @enum {string} */
             access_type?: "open" | "contract_holders";
+            /** @description A participation bid is required (false — no bids and no accepting_bids phase: published → bidding directly) */
+            bids_required?: boolean;
             execution_rating?: number | null;
             region?: string | null;
             /** @description ОКПД2 код предмета закупки */
@@ -4354,7 +4367,7 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
-            /** @description Not accepting bids, or a closed tender without a contract (code: state_transition_forbidden | access_denied) */
+            /** @description Not accepting bids, a tender that requires no participation bid at all (bids_required=false), or a closed tender without a contract (code: state_transition_forbidden | access_denied) */
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };

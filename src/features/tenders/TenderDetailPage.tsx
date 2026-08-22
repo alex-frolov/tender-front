@@ -262,6 +262,16 @@ export function TenderDetailPage() {
             <DetailRow label="Процедура" value={procedureValue ?? '—'} />
             <DetailRow label="Закон" value={lawValue ?? '—'} />
             <DetailRow label="Тип доступа" value={accessValue ?? '—'} />
+            {/* Секции «Заявки» у процедуры без заявок нет вовсе — строка здесь
+                единственное место, где видно, что подавать заявку не нужно. */}
+            <DetailRow
+              label="Заявка на участие"
+              value={
+                tender.bids_required === false
+                  ? 'Не требуется — торги открыты всем, кому доступен тендер'
+                  : 'Требуется, торгуются только допущенные участники'
+              }
+            />
             <DetailRow label="Регион" value={tender.region || '—'} />
             <DetailRow label="ОКПД2" value={tender.okpd2 || '—'} />
             <DetailRow label="Валюта" value={tender.currency || '—'} />

@@ -59,6 +59,7 @@ interface TenderForm {
   priceBasis: PriceBasis
   region: string
   accessType: AccessType
+  bidsRequired: boolean
   bidsEnd: string
 }
 
@@ -84,6 +85,7 @@ const INITIAL_TENDER: TenderForm = {
   priceBasis: 'net',
   region: '',
   accessType: 'open',
+  bidsRequired: true,
   bidsEnd: '',
 }
 
@@ -190,6 +192,7 @@ function buildTenderCreate(form: TenderForm, lots: LotForm[], customerId: string
       customer_id: customerId,
       ...(form.region.trim() !== '' ? { region: form.region.trim() } : {}),
       access_type: form.accessType,
+      bids_required: form.bidsRequired,
       ...(Object.keys(timeline).length > 0 ? { timeline } : {}),
       lots: lotsPayload,
     },
@@ -472,6 +475,29 @@ export function TenderCreatePage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Заявка на участие — свойство самой процедуры: без неё этап приёма
+              заявок не существует вовсе (тендер уходит из «Опубликован» сразу
+              в «Торги»). Меняется только до создания, поэтому и стоит здесь. */}
+          <div className="space-y-1.5 sm:col-span-2">
+            <div className="flex items-center gap-2">
+              <input
+                id="tender-bids-required"
+                type="checkbox"
+                checked={form.bidsRequired}
+                onChange={(event) => setTender('bidsRequired', event.target.checked)}
+                className="border-input accent-primary size-4 rounded"
+              />
+              <label htmlFor="tender-bids-required" className="text-sm font-medium">
+                Требуется заявка на участие
+              </label>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {form.bidsRequired
+                ? 'Участники подают заявки, вы допускаете их к торгам — торговаться сможет только допущенный.'
+                : 'Заявок не будет: этапа приёма заявок нет, торговаться сможет любой, кому доступен тендер.'}
+            </p>
           </div>
 
           <div className="space-y-1.5">

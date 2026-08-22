@@ -62,6 +62,11 @@ const ACTION_TITLES: Record<PendingAction['kind'], string> = {
  * До вскрытия заявок бэкенд отдаёт только метаданные (FR-1.2.2): цена и
  * содержимое зашифрованы, поэтому колонка цены до вскрытия пуста — это не
  * ошибка загрузки.
+ *
+ * У тендера без заявки на участие (`bids_required: false`) секции нет вовсе —
+ * ни у заказчика, ни у участника: подавать и допускать нечего, этапа приёма
+ * заявок в такой процедуре не существует. Факт выводится строкой в реквизитах
+ * карточки.
  */
 export function TenderBids({ tender }: { tender: Tender }) {
   const { user } = useAuth()
@@ -74,6 +79,8 @@ export function TenderBids({ tender }: { tender: Tender }) {
   // agent — только просмотр: bids.submit/withdraw/qualify ему не выданы (403).
   const canAct = user?.role != null && user.role !== 'agent'
   const accepting = tender.status === ACCEPTING
+  // Процедура без заявки на участие: заявок не существует — не спрашиваем их.
+  const bidsRequired = tender.bids_required !== false
 
   const [submitOpen, setSubmitOpen] = useState(false)
   const [pending, setPending] = useState<PendingAction | null>(null)
@@ -84,7 +91,7 @@ export function TenderBids({ tender }: { tender: Tender }) {
   const firstPageQuery = useQuery({
     queryKey: ['bids', tenderId, null],
     queryFn: () => listBids(tenderId),
-    enabled: tenderId !== '',
+    enabled: tenderId !== '' && bidsRequired,
   })
 
   const { items, isFetchingMore, hasMore, loadMore, reset } = useCursorPage<Bid>()
@@ -162,6 +169,8 @@ export function TenderBids({ tender }: { tender: Tender }) {
   }
 
   if (tenderId === '') return null
+  // Процедура без заявок: секция не показывается обеим сторонам.
+  if (!bidsRequired) return null
 
   return (
     <div className="space-y-3">

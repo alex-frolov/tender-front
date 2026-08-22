@@ -10,6 +10,7 @@ import { apiErrorMessage } from '@/lib/errors'
 import { formatMoney } from '@/lib/money'
 import { isAuctionTrade } from './auctionStatus'
 import { bidRules, inputToMinor, minorToInput, validateBid } from './bidRules'
+import { useAuctionParty } from './useAuctionParty'
 
 type AuctionState = components['schemas']['AuctionState']
 type AuctionBid = components['schemas']['AuctionBid']
@@ -40,6 +41,11 @@ export function BidComposer({ auctionId, state }: BidComposerProps) {
 
   const trading = isAuctionTrade(state?.status)
   const rules = useMemo(() => bidRules(state), [state])
+  // Условие допуска — свойство тендера, а не аукциона: в процедуре без заявок
+  // на участие допускать некого, и требовать заявку в подсказке было бы враньём.
+  // Ключ ['tender', id] общий с карточкой тендера — переход оттуда её уже прогрел.
+  const { tender } = useAuctionParty(state?.tender_id, trading)
+  const bidsRequired = tender == null || tender.bids_required !== false
 
   useEffect(() => {
     if (edited) return
@@ -172,8 +178,9 @@ export function BidComposer({ auctionId, state }: BidComposerProps) {
       )}
       {trading && (
         <p className="text-muted-foreground text-xs">
-          Торговаться может только допущенный участник: нужна заявка на этот лот
-          со статусом «Допущена» (раздел «Заявки» в карточке тендера).
+          {bidsRequired
+            ? 'Торговаться может только допущенный участник: нужна заявка на этот лот со статусом «Допущена» (раздел «Заявки» в карточке тендера).'
+            : 'Заявка на участие в этой процедуре не нужна — торговаться может любой, кому доступен тендер.'}
         </p>
       )}
       {formError != null && <p className="text-destructive text-sm">{formError}</p>}
