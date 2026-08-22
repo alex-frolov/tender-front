@@ -66,6 +66,13 @@ export function BidDocuments({ bid, canEdit }: { bid: Bid; canEdit: boolean }) {
         description="Файлы загружаются к заявке, затем включаются в её состав отдельным действием."
       />
 
+      {!canEdit && (
+        <p className="text-muted-foreground text-sm">
+          Состав части 2 больше не меняется: документы прикладываются, пока идёт приём
+          заявок и заявка не рассмотрена заказчиком.
+        </p>
+      )}
+
       {canEdit && (
         <div className="flex flex-wrap items-center gap-2">
           <Button
