@@ -84,6 +84,11 @@ function DeadlineRow({ deadline }: { deadline: Deadline }) {
  * (GET /dashboard, GET /stats/tenders). Раньше корень просто редиректил
  * на список тендеров.
  *
+ * Охват — процедуры, к которым причастна компания в обе стороны: свои (как
+ * заказчик) и те, где она подала заявку или торговалась (как исполнитель).
+ * До правки бэкенда всё считалось только по своим тендерам, и у исполнителя
+ * страница была пустой при любом объёме торгов: своих процедур у него нет.
+ *
  * Право `dashboard.view` настраиваемое: admin и суперадмин имеют его всегда,
  * менеджер и агент — по настройке площадки. Поэтому 403 здесь не ошибка,
  * а штатный ответ, и страница объясняет его вместо красной плашки.
@@ -175,7 +180,7 @@ export function DashboardPage() {
             <StatTile
               label="Активные тендеры"
               value={data?.active_tenders}
-              hint="Опубликованы и идут"
+              hint="Свои и те, где вы участвуете"
               to="/tenders"
             />
             <StatTile
@@ -197,7 +202,8 @@ export function DashboardPage() {
               <CardTitle className="text-base">Ближайшие сроки</CardTitle>
               <CardDescription>
                 Приём заявок и окончание торгов в пределах выбранного периода
-                ({PERIOD_LABELS[period].toLowerCase()}).
+                ({PERIOD_LABELS[period].toLowerCase()}) — по своим процедурам и по тем,
+                где вы участвуете.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
