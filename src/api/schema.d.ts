@@ -5470,6 +5470,8 @@ export interface operations {
                 cursor?: components["parameters"]["Cursor"];
                 limit?: components["parameters"]["Limit"];
                 contract_status?: components["schemas"]["ContractStatus"];
+                /** @description Only contracts bound to this tender (contract_tenders.tender_id) */
+                tender_id?: string;
             };
             header?: never;
             path?: never;

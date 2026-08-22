@@ -59,6 +59,11 @@ function saveBlob(blob: Blob, filename: string): void {
  * только компания-владелец. Чужие приватные документы в списке не появляются:
  * их отфильтровывает бэкенд, а не фронт.
  *
+ * `defaultVisibility` задаёт стартовое значение этого выбора. Оно нужно там,
+ * где документ по смыслу адресован контрагенту: акт приёмки, загруженный
+ * приватным, останется невидимым заказчику — список отдаёт свои документы
+ * плюс публичные, и «приватный» здесь означает «никто, кроме меня».
+ *
  * Загрузка — единственное место, где тело запроса не JSON: файл уходит
  * multipart'ом как есть (см. `api/documents.ts`).
  */
@@ -68,12 +73,16 @@ export function DocumentsCard({
   canUpload,
   title = 'Документы',
   description,
+  defaultVisibility = '',
+  uploadHint,
 }: {
   entityType: DocumentEntityType
   entityId: string
   canUpload: boolean
   title?: string
   description?: string
+  defaultVisibility?: DocumentVisibility | ''
+  uploadHint?: string
 }) {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -92,7 +101,7 @@ export function DocumentsCard({
   })
 
   const [typeId, setTypeId] = useState('')
-  const [visibility, setVisibility] = useState<DocumentVisibility | ''>('')
+  const [visibility, setVisibility] = useState<DocumentVisibility | ''>(defaultVisibility)
   const [error, setError] = useState<string | null>(null)
 
   const uploadMutation = useMutation({
@@ -267,6 +276,10 @@ export function DocumentsCard({
               <Upload className="size-4" />
               {uploadMutation.isPending ? 'Загружаем…' : 'Загрузить файл'}
             </Button>
+
+            {uploadHint != null && (
+              <p className="text-muted-foreground w-full text-xs">{uploadHint}</p>
+            )}
           </div>
         )}
 

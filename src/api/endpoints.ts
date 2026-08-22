@@ -458,6 +458,8 @@ export interface ContractsQuery {
   cursor?: string
   limit?: number
   contract_status?: ContractStatus
+  /** Только договоры, привязанные к процедуре (contract_tenders.tender_id). */
+  tender_id?: string
 }
 
 /** Список контрактов (GET /contracts, курсорная пагинация { items, next_cursor }). */

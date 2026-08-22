@@ -307,12 +307,19 @@ function ContractCard({ contractId, onClose }: { contractId: string; onClose: ()
  * Список контрактов (GET /contracts): фильтр по статусу в URL, курсорная
  * пагинация «Показать ещё» (паттерн TendersPage), карточка выбранного
  * контракта — под таблицей.
+ *
+ * `?contract=<id>` открывает карточку сразу: со страницы аукциона на договор
+ * ведёт прямая ссылка, а выбор строки в таблице там недоступен. Параметр
+ * читается один раз при монтировании — дальше выбором управляет страница,
+ * иначе закрытие карточки тут же отменялось бы значением из URL.
  */
 export function ContractsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const { user } = useAuth()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => searchParams.get('contract'),
+  )
   const [createOpen, setCreateOpen] = useState(false)
 
   const statusFilter = searchParams.get('contract_status') ?? ''

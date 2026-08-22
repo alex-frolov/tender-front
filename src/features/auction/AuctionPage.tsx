@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useAuth } from '@/features/auth/AuthContext'
 import {
   useAuctionStream,
   type AuctionLiveSnapshot,
@@ -31,16 +32,20 @@ import { formatDateTime, formatRemaining, formatSeconds } from '@/lib/format'
 import { formatMoney } from '@/lib/money'
 import { AuctionStatusBadge } from './AuctionStatusBadge'
 import { AuctionCancelForm } from './AuctionCancelForm'
+import { AuctionContract } from './AuctionContract'
 import { AuctionEditForm } from './AuctionEditForm'
 import { AuctionLifecycle } from './AuctionLifecycle'
 import { AuctionScheduleForm } from './AuctionScheduleForm'
 import { BidComposer } from './BidComposer'
+import { ExecutionDocuments } from './ExecutionDocuments'
 import { mergeLiveSnapshot } from './liveState'
+import { isWinnerCompany, useAuctionParty } from './useAuctionParty'
 import {
   AUCTION_STATUS_LABELS,
   isAuctionFinished,
   isAuctionLive,
   isAuctionTrade,
+  type AuctionStatus,
 } from './auctionStatus'
 
 type AuctionBid = components['schemas']['AuctionBid']
@@ -129,6 +134,7 @@ function BidsTableSkeleton() {
  */
 export function AuctionPage() {
   const { auctionId } = useParams<{ auctionId: string }>()
+  const { user } = useAuth()
 
   const stateQuery = useQuery({
     queryKey: ['auction-state', auctionId],
@@ -181,6 +187,21 @@ export function AuctionPage() {
   }, [auctionId])
 
   const bids: AuctionBid[] = bidsQuery.data?.items ?? []
+
+  // Сторона исполнения: заказчик процедуры или победитель торгов. Нужна и
+  // блоку договора (кто заводит и кто выставляет претензию), и документам
+  // исполнения (грузят обе стороны, посторонние — нет).
+  const executionStatus = status as AuctionStatus | undefined
+  const executing =
+    executionStatus === 'approve' ||
+    executionStatus === 'in_work' ||
+    executionStatus === 'done_by_performer' ||
+    executionStatus === 'claim' ||
+    executionStatus === 'done' ||
+    executionStatus === 'done_by_claim'
+  const { canControl } = useAuctionParty(state?.tender_id, executing)
+  const isWinner =
+    user?.role !== 'agent' && isWinnerCompany(bids, state?.winner_bid_id, user?.company_id)
 
   const currentPriceMinor = state?.current_price_minor ?? state?.start_price_minor
 
@@ -283,6 +304,18 @@ export function AuctionPage() {
       <AuctionEditForm auctionId={auctionId} state={state} />
 
       <AuctionLifecycle auctionId={auctionId} state={state} bids={bids} />
+
+      <AuctionContract
+        tenderId={state?.tender_id}
+        status={executionStatus}
+        canControl={canControl}
+      />
+
+      <ExecutionDocuments
+        lotId={state?.lot_id}
+        status={executionStatus}
+        isParty={isWinner || canControl}
+      />
 
       <AuctionCancelForm
         auctionId={auctionId}
