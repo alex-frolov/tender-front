@@ -1,18 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { MessageSquare, ShieldAlert } from 'lucide-react'
-import {
-  answerQuestion,
-  askQuestion,
-  fileComplaint,
-  listComplaints,
-  listQuestions,
-} from '@/api/engagement'
+import { MessageSquare } from 'lucide-react'
+import { answerQuestion, askQuestion, listQuestions } from '@/api/engagement'
 import type { components } from '@/api/schema'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -22,7 +15,6 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/features/auth/AuthContext'
-import { COMPLAINT_STATUS_BADGE_VARIANTS, COMPLAINT_STATUS_LABELS } from '@/lib/enums'
 import { apiErrorMessage, isApiError } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { isTenderCustomer } from '@/lib/tenderAccess'
@@ -33,19 +25,20 @@ type Tender = components['schemas']['Tender']
 const WHOLE_TENDER = 'all'
 
 /**
- * Вопросы по тендеру и жалоба на процедуру
- * (GET/POST /tenders/{id}/questions, POST /tenders/{id}/complaints).
+ * Вопросы по тендеру (GET/POST /tenders/{id}/questions).
  *
  * Право `tenders.qa` настраиваемое (admin — всегда, manager и agent — по
  * настройке площадки), поэтому 403 объясняем текстом, а не красной ошибкой.
  *
  * Отвечает на вопросы только заказчик процедуры — форма ответа показывается
- * ему, остальным виден сам ответ. Жалобы видят обе стороны разбирательства:
- * и подавший, и заказчик.
+ * ему, остальным виден сам ответ.
  *
- * Кнопка подачи жалобы скрыта у заказчика по смыслу, а не по правам: API
- * принимает жалобу и от него (проверено — 201), но жаловаться на собственную
- * процедуру незачем.
+ * Жалоб на процедуру (`/complaints`, участник → на действия заказчика) здесь
+ * больше нет: решением владельца единственное разбирательство площадки —
+ * **претензия** заказчика к исполнителю по договору (`/claims`), и она живёт
+ * там, где выставляется, — в блоке «Договор» на странице аукциона и в карточке
+ * договора. Эндпоинты жалоб в API остались, но интерфейса у них нет: два
+ * разных объекта под одним словом читались бы как одно и то же.
  */
 export function TenderQuestions({ tender }: { tender: Tender }) {
   const queryClient = useQueryClient()
@@ -63,11 +56,6 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
   const [lotId, setLotId] = useState<string>(WHOLE_TENDER)
   const [askError, setAskError] = useState<string | null>(null)
 
-  const [complaintOpen, setComplaintOpen] = useState(false)
-  const [ground, setGround] = useState('')
-  const [complaintText, setComplaintText] = useState('')
-  const [complaintError, setComplaintError] = useState<string | null>(null)
-
   const [answeringId, setAnsweringId] = useState<string | null>(null)
   const [answerText, setAnswerText] = useState('')
 
@@ -77,13 +65,6 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
       void queryClient.invalidateQueries({ queryKey: ['questions', tenderId] })
     },
   })
-  const complaintMutation = useMutation({
-    mutationFn: (input: { text: string; ground: string; lot_id?: string }) =>
-      fileComplaint(tenderId, input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['complaints', tenderId] })
-    },
-  })
   const answerMutation = useMutation({
     mutationFn: ({ questionId, answer }: { questionId: string; answer: string }) =>
       answerQuestion(tenderId, questionId, answer),
@@ -91,14 +72,6 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
       void queryClient.invalidateQueries({ queryKey: ['questions', tenderId] })
     },
   })
-
-  // Жалобы по этому тендеру: список видят обе стороны разбирательства.
-  const complaintsQuery = useQuery({
-    queryKey: ['complaints', tenderId],
-    queryFn: () => listComplaints({ tender_id: tenderId }),
-    enabled: tenderId !== '',
-  })
-  const complaints = complaintsQuery.data?.items ?? []
 
   const lots = tender.lots ?? []
   const questions = questionsQuery.data ?? []
@@ -120,27 +93,6 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
       setText('')
     } catch (err) {
       setAskError(apiErrorMessage(err))
-    }
-  }
-
-  async function handleComplaint(event: FormEvent): Promise<void> {
-    event.preventDefault()
-    setComplaintError(null)
-    if (ground.trim() === '' || complaintText.trim() === '') {
-      setComplaintError('Заполните основание и описание.')
-      return
-    }
-    try {
-      await complaintMutation.mutateAsync({
-        ground: ground.trim(),
-        text: complaintText.trim(),
-        ...(lotId === WHOLE_TENDER ? {} : { lot_id: lotId }),
-      })
-      setComplaintOpen(false)
-      setGround('')
-      setComplaintText('')
-    } catch (err) {
-      setComplaintError(apiErrorMessage(err))
     }
   }
 
@@ -171,12 +123,6 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
             Разъяснения документации: вопросы и ответы видны всем участникам.
           </CardDescription>
         </div>
-        {!isCustomer && !complaintOpen && (
-          <Button variant="outline" size="sm" onClick={() => setComplaintOpen(true)}>
-            <ShieldAlert className="size-4" />
-            Подать жалобу
-          </Button>
-        )}
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -310,87 +256,6 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
             <Button type="submit" size="sm" disabled={askMutation.isPending}>
               {askMutation.isPending ? 'Отправляем…' : 'Отправить вопрос'}
             </Button>
-          </form>
-        )}
-
-        {complaints.length > 0 && (
-          <div className="space-y-2 border-t pt-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <ShieldAlert className="size-4" />
-              Жалобы по процедуре
-            </div>
-            {complaints.map((complaint) => (
-              <div key={complaint.id} className="space-y-1 rounded-lg border p-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <span className="text-sm font-medium">{complaint.ground}</span>
-                  {complaint.status != null && (
-                    <Badge variant={COMPLAINT_STATUS_BADGE_VARIANTS[complaint.status]}>
-                      {COMPLAINT_STATUS_LABELS[complaint.status]}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-sm">{complaint.text}</p>
-                {complaint.resolution != null && complaint.resolution !== '' && (
-                  <p className="text-muted-foreground text-xs">
-                    Решение: {complaint.resolution}
-                  </p>
-                )}
-                {complaint.created_at != null && (
-                  <div className="text-muted-foreground text-xs">
-                    Подана {formatDateTime(complaint.created_at)}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {complaintOpen && (
-          <form onSubmit={handleComplaint} className="space-y-3 border-t pt-4">
-            <div className="space-y-1.5">
-              <label htmlFor="complaint-ground" className="text-sm font-medium">
-                Основание
-              </label>
-              <Input
-                id="complaint-ground"
-                value={ground}
-                onChange={(event) => setGround(event.target.value)}
-                placeholder="Например: нарушение сроков размещения документации"
-              />
-              <p className="text-muted-foreground text-xs">
-                По основанию жалоба разбирается — описание его не заменяет.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="complaint-text" className="text-sm font-medium">
-                Описание
-              </label>
-              <Textarea
-                id="complaint-text"
-                value={complaintText}
-                onChange={(event) => setComplaintText(event.target.value)}
-                rows={4}
-              />
-            </div>
-
-            {complaintError != null && (
-              <p className="text-destructive text-sm">{complaintError}</p>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setComplaintOpen(false)}
-              >
-                Отмена
-              </Button>
-              <Button type="submit" size="sm" disabled={complaintMutation.isPending}>
-                {complaintMutation.isPending ? 'Отправляем…' : 'Подать жалобу'}
-              </Button>
-            </div>
           </form>
         )}
       </CardContent>
