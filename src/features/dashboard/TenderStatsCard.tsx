@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getTenderStats, type StatsDimension, type StatsRow } from '@/api/analytics'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -74,7 +75,7 @@ export function TenderStatsCard() {
   const [to, setTo] = useState('')
 
   const statsQuery = useQuery({
-    queryKey: ['tender-stats', dimension, from, to],
+    queryKey: queryKeys.tenderStats(dimension, from, to),
     queryFn: () =>
       getTenderStats({
         dimension,

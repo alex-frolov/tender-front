@@ -1,9 +1,8 @@
-import { client, unwrap } from './client'
+import { client, ensureOk, unwrap } from './client'
 import type { components, operations } from './schema'
 
 export type User = components['schemas']['User']
 export type UserRole = components['schemas']['UserRole']
-export type ApiError = components['schemas']['Error']
 
 /**
  * Роль, которую можно назначить через API компании (тело POST /users).
@@ -62,7 +61,5 @@ export async function deleteUser(userId: string): Promise<void> {
   const result = await client.DELETE('/users/{userId}', {
     params: { path: { userId } },
   })
-  if (result.error !== undefined) {
-    throw result.error as ApiError
-  }
+  ensureOk(result)
 }

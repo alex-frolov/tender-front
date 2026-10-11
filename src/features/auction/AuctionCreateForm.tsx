@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createAuction, type AuctionCreate } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -18,16 +19,10 @@ import {
   type StepMode,
 } from '@/features/auction/auctionStatus'
 import { apiErrorMessage } from '@/lib/errors'
+import { parseRublesToMinor } from '@/lib/money'
 
 const AUCTION_TYPES: readonly AuctionType[] = ['reduction', 'free_price', 'price_request']
 const STEP_MODES: readonly StepMode[] = ['fixed', 'free']
-
-/** Рубли из формы → minor units (целые копейки), как того требует контракт. */
-function toMinor(value: string): number | null {
-  const parsed = Number(value.replace(',', '.'))
-  if (!Number.isFinite(parsed) || value.trim() === '') return null
-  return Math.round(parsed * 100)
-}
 
 /**
  * Создание аукциона для лота (POST /auctions).
@@ -63,7 +58,7 @@ export function AuctionCreateForm({
   const createMutation = useMutation({
     mutationFn: (input: AuctionCreate) => createAuction(input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['auctions'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.auctions })
     },
   })
 
@@ -76,7 +71,7 @@ export function AuctionCreateForm({
     const input: AuctionCreate = { lot_id: lotId, type }
     if (type === 'reduction') input.step_mode = stepMode
 
-    const stepMinor = toMinor(stepValue)
+    const stepMinor = parseRublesToMinor(stepValue)
     // NaN != null, поэтому нечисловой процент раньше считался «шаг указан»:
     // проверка ниже пропускала форму, а запрос уходил вообще без шага.
     const percentValue = stepPercent.trim() === '' ? null : Number(stepPercent.replace(',', '.'))
@@ -93,8 +88,8 @@ export function AuctionCreateForm({
     if (stepMinor != null) input.bid_step_minor = stepMinor
     if (percentBps != null) input.bid_step_percent_bps = percentBps
 
-    const minLimit = toMinor(priceMin)
-    const maxLimit = toMinor(priceMax)
+    const minLimit = parseRublesToMinor(priceMin)
+    const maxLimit = parseRublesToMinor(priceMax)
     if (minLimit != null) input.price_min_limit_minor = minLimit
     if (maxLimit != null) input.price_max_limit_minor = maxLimit
     if (minLimit != null && maxLimit != null && maxLimit < minLimit) {

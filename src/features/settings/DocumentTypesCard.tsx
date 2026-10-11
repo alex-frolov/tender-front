@@ -8,6 +8,7 @@ import {
   type DocumentOwnerRole,
   type DocumentVisibility,
 } from '@/api/documents'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -47,7 +48,7 @@ const VISIBILITY_LABELS: Record<DocumentVisibility, string> = {
 export function DocumentTypesCard() {
   const queryClient = useQueryClient()
   const typesQuery = useQuery({
-    queryKey: ['document-types'],
+    queryKey: queryKeys.documentTypes,
     queryFn: listDocumentTypes,
     staleTime: 5 * 60_000,
   })
@@ -60,7 +61,7 @@ export function DocumentTypesCard() {
   const [error, setError] = useState<string | null>(null)
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['document-types'] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.documentTypes })
   }
 
   const createMutation = useMutation({ mutationFn: createDocumentType, onSuccess: invalidate })
@@ -69,7 +70,7 @@ export function DocumentTypesCard() {
     onSuccess: invalidate,
   })
   const activateMutation = useMutation({
-    mutationFn: (id: string) => updateDocumentType(id, { active: true }),
+    mutationFn: (id: number) => updateDocumentType(id, { active: true }),
     onSuccess: invalidate,
   })
 
@@ -125,10 +126,10 @@ export function DocumentTypesCard() {
         ) : (
           <ul className="divide-y">
             {types.map((type) => {
-              const id = type.id != null ? String(type.id) : ''
+              const id = type.id
               const active = type.active !== false
               return (
-                <li key={id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+                <li key={id ?? type.code} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                   <span className="font-medium">{type.name}</span>
                   <span className="text-muted-foreground font-mono text-xs">{type.code}</span>
                   {type.visibility != null && (
@@ -145,12 +146,12 @@ export function DocumentTypesCard() {
                     variant="ghost"
                     size="sm"
                     className="ml-auto"
-                    disabled={pending || id === ''}
-                    onClick={() =>
-                      active
-                        ? deactivateMutation.mutate(id)
-                        : activateMutation.mutate(id)
-                    }
+                    disabled={pending || id == null}
+                    onClick={() => {
+                      if (id == null) return
+                      if (active) deactivateMutation.mutate(id)
+                      else activateMutation.mutate(id)
+                    }}
                   >
                     {active ? 'Отключить' : 'Включить'}
                   </Button>

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { submitBid, type Bid, type BidCreate } from '@/api/bids'
 import type { components } from '@/api/schema'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,18 +16,9 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useIdempotentMutation } from '@/hooks/useIdempotentMutation'
 import { apiErrorMessage } from '@/lib/errors'
-import { formatMoney } from '@/lib/money'
+import { formatMoney, parseRublesToMinor } from '@/lib/money'
 
 type Tender = components['schemas']['Tender']
-
-/** Рубли из формы → minor units (целые копейки), как того требует контракт. */
-function toMinor(value: string): number | null {
-  const trimmed = value.trim()
-  if (trimmed === '') return null
-  const parsed = Number(trimmed.replace(',', '.'))
-  if (!Number.isFinite(parsed)) return null
-  return Math.round(parsed * 100)
-}
 
 /**
  * Подача заявки на лот (POST /tenders/{id}/bids).
@@ -65,7 +57,7 @@ export function BidSubmitForm({
   const mutation = useIdempotentMutation<Bid, unknown, BidCreate>({
     mutationFn: (body, idempotencyKey) => submitBid({ tenderId, body, idempotencyKey }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['bids', tenderId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.bids.byTender(tenderId) })
     },
   })
 
@@ -91,7 +83,7 @@ export function BidSubmitForm({
       },
     }
 
-    const priceMinor = toMinor(price)
+    const priceMinor = parseRublesToMinor(price)
     if (price.trim() !== '') {
       if (priceMinor == null || priceMinor < 0) {
         setError('Цена предложения должна быть неотрицательным числом.')

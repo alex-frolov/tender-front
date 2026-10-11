@@ -7,6 +7,7 @@ import {
   type Contract,
   type ContractTender,
 } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,14 +18,7 @@ import {
 } from '@/lib/contracts'
 import { apiErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
-import { formatMoney } from '@/lib/money'
-
-/** Рубли из формы → minor units. */
-function toMinor(value: string): number | null {
-  if (value.trim() === '') return null
-  const parsed = Number(value.replace(',', '.'))
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : null
-}
+import { formatMoney, parseRublesToMinor } from '@/lib/money'
 
 /**
  * Этапы одной привязки «договор — тендер» плюс форма добавления
@@ -46,7 +40,7 @@ function TenderStages({ bound, contractId }: { bound: ContractTender; contractId
     mutationFn: (input: { title: string; amount_minor?: number; due_at?: string }) =>
       createContractStage(bound.id ?? '', input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['contract', contractId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.contract(contractId) })
     },
   })
 
@@ -59,7 +53,7 @@ function TenderStages({ bound, contractId }: { bound: ContractTender; contractId
       setError('Укажите название этапа.')
       return
     }
-    const amountMinor = toMinor(amount)
+    const amountMinor = parseRublesToMinor(amount)
     try {
       await mutation.mutateAsync({
         title: title.trim(),
@@ -179,8 +173,8 @@ export function ContractStructure({
     mutationFn: (input: { tender_id: string; lot_id?: string; price_net_minor: number }) =>
       bindTenderToContract(contractId, input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['contract', contractId] })
-      void queryClient.invalidateQueries({ queryKey: ['contracts'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.contract(contractId) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all })
     },
   })
 
@@ -192,7 +186,7 @@ export function ContractStructure({
   async function handleBind(event: FormEvent): Promise<void> {
     event.preventDefault()
     setError(null)
-    const priceMinor = toMinor(price)
+    const priceMinor = parseRublesToMinor(price)
     if (tenderId.trim() === '') {
       setError('Укажите идентификатор тендера.')
       return

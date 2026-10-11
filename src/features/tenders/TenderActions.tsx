@@ -13,9 +13,10 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { cancelTender, publishTender, updateTender, withdrawTender } from '@/api/endpoints'
 import type { components } from '@/api/schema'
+import { queryKeys } from '@/api/queryKeys'
 import { apiErrorMessage } from '@/lib/errors'
 import { canManageTender } from '@/lib/tenderAccess'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 
 type Tender = components['schemas']['Tender']
 type TenderStatus = components['schemas']['TenderStatus']
@@ -82,8 +83,8 @@ export function TenderActions({ tender }: { tender: Tender }) {
   const [cancelError, setCancelError] = useState<string | null>(null)
 
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ['tender', tender.id] })
-    void queryClient.invalidateQueries({ queryKey: ['tenders'] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.tender(tender.id) })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.tenders.all })
   }
 
   const updateMutation = useMutation({

@@ -4,7 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { createTender, publishTender } from '@/api/endpoints'
 import type { components } from '@/api/schema'
-import { useAuth } from '@/features/auth/AuthContext'
+import { queryKeys } from '@/api/queryKeys'
+import { useAuth } from '@/features/auth/useAuth'
 import { CompanyGateBanner } from '@/features/company/CompanyGateBanner'
 import { useCompanyGate } from '@/features/company/useCompanyGate'
 import { Button } from '@/components/ui/button'
@@ -24,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { apiErrorMessage } from '@/lib/errors'
+import { parseRublesToMinor } from '@/lib/money'
 import {
   ACCESS_TYPE_LABELS,
   LAW_TYPE_LABELS,
@@ -130,10 +132,10 @@ function buildTenderCreate(form: TenderForm, lots: LotForm[], customerId: string
     if (lot.title.trim() === '') {
       return { error: 'Укажите название лота' }
     }
-    const price = parseNumber(lot.priceNetRub)
-    // Number('') === 0, поэтому пустое поле проверяем отдельно: иначе лот
-    // уезжает с price_net_minor: 0 и бэкенд отвечает lots_sum_mismatch.
-    if (lot.priceNetRub.trim() === '' || price == null || price < 0) {
+    // Пустое поле — не ноль: иначе лот уезжал бы с price_net_minor: 0, и
+    // бэкенд отвечал lots_sum_mismatch.
+    const price = parseRublesToMinor(lot.priceNetRub)
+    if (price == null || price < 0) {
       return { error: 'Цена лота — число не меньше нуля' }
     }
     if (lot.quantity.trim() !== '') {
@@ -146,11 +148,10 @@ function buildTenderCreate(form: TenderForm, lots: LotForm[], customerId: string
 
   let nmckMinor: number | null = null
   if (!form.noStartPrice) {
-    const nmck = parseNumber(form.nmckRub)
-    if (form.nmckRub.trim() === '' || nmck == null || nmck < 0) {
+    nmckMinor = parseRublesToMinor(form.nmckRub)
+    if (nmckMinor == null || nmckMinor < 0) {
       return { error: 'Укажите НМЦК (или включите «Без начальной цены»)' }
     }
-    nmckMinor = Math.round(nmck * 100)
   }
 
   const timeline: { [key: string]: string } = {}
@@ -160,14 +161,14 @@ function buildTenderCreate(form: TenderForm, lots: LotForm[], customerId: string
   }
 
   const lotsPayload: components['schemas']['LotCreate'][] = filledLots.map((lot, index) => {
-    const price = parseNumber(lot.priceNetRub) ?? 0
+    const priceMinor = parseRublesToMinor(lot.priceNetRub) ?? 0
     const quantity = lot.quantity.trim() === '' ? undefined : parseNumber(lot.quantity)
     const vatRate = lot.vatRate.trim() === '' ? undefined : parseNumber(lot.vatRate)
     const executionStartAt = toIso(lot.executionStartAt)
     return {
       number: index + 1,
       title: lot.title.trim(),
-      price_net_minor: Math.round(price * 100),
+      price_net_minor: priceMinor,
       ...(vatRate != null ? { vat_rate: vatRate } : {}),
       ...(quantity != null ? { quantity } : {}),
       ...(lot.unit.trim() !== '' ? { unit: lot.unit.trim() } : {}),
@@ -243,7 +244,7 @@ export function TenderCreatePage() {
       }
     },
     onSuccess: ({ tender, publishError }) => {
-      void queryClient.invalidateQueries({ queryKey: ['tenders'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tenders.all })
       navigate(`/tenders/${tender.id}`, publishError != null ? { state: { publishError } } : {})
     },
   })

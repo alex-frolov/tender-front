@@ -31,8 +31,9 @@ import {
   type User,
   type UserUpdate,
 } from '@/api/users'
+import { queryKeys } from '@/api/queryKeys'
 import { FullPageSpinner } from '@/components/auth/ProtectedRoute'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage } from '@/lib/errors'
 import {
   ROLE_LABELS,
@@ -84,7 +85,7 @@ export function UsersPage() {
 
   // Запрос делаем только для admin: для остальных ролей это 403, а запрос не нужен.
   const usersQuery = useQuery({
-    queryKey: ['users'],
+    queryKey: queryKeys.users,
     queryFn: listUsers,
     enabled: user?.role === 'admin',
   })
@@ -92,21 +93,21 @@ export function UsersPage() {
   const inviteMutation = useMutation({
     mutationFn: inviteUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.users })
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: deleteUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.users })
     },
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ userId, ...input }: { userId: string } & UserUpdate) => updateUser(userId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.users })
     },
   })
 

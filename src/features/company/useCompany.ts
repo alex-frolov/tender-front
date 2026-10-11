@@ -1,12 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { getMyCompany } from '@/api/endpoints'
 import type { components } from '@/api/schema'
-import { useAuth } from '@/features/auth/AuthContext'
+import { queryKeys } from '@/api/queryKeys'
+import { useAuth } from '@/features/auth/useAuth'
 
 export type Company = components['schemas']['Company']
-
-/** Ключ кэша компании актора — инвалидируется после PATCH /companies. */
-export const COMPANY_QUERY_KEY = ['company'] as const
 
 /**
  * Компания текущего пользователя — GET /companies: карточка своей компании
@@ -23,7 +21,7 @@ export function useCompanyQuery() {
   const hasCompany = user?.company_id != null
 
   return useQuery({
-    queryKey: COMPANY_QUERY_KEY,
+    queryKey: queryKeys.company,
     queryFn: async (): Promise<Company | null> => await getMyCompany(),
     enabled: hasCompany,
     staleTime: 60_000,

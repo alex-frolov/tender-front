@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Ban } from 'lucide-react'
 import { cancelAuction } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -39,8 +40,8 @@ export function AuctionCancelForm({
   const mutation = useMutation({
     mutationFn: (value: string) => cancelAuction(auctionId, value),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['auction-state', auctionId] })
-      void queryClient.invalidateQueries({ queryKey: ['auctions'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.auctionState(auctionId) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.auctions })
     },
   })
 

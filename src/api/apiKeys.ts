@@ -1,4 +1,4 @@
-import { client, unwrap } from './client'
+import { client, ensureOk, unwrap } from './client'
 import type { components, operations } from './schema'
 
 export type ApiKey = components['schemas']['ApiKey']
@@ -35,7 +35,7 @@ export async function revokeApiKey(apiKeyId: string): Promise<void> {
   const result = await client.DELETE('/api-keys/{apiKeyId}', {
     params: { path: { apiKeyId } },
   })
-  if (result.error !== undefined) throw result.error
+  ensureOk(result)
 }
 
 /** Ротация (POST /api-keys/{id}/rotate): новый токен один раз, старый мёртв. */

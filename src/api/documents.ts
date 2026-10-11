@@ -1,5 +1,6 @@
-import { client, unwrap } from './client'
-import type { components, operations } from './schema'
+import { client, ensureOk, filenameFromResponse, unwrap } from './client'
+import type { components } from './schema'
+import type { RequestBody } from './types'
 
 export type Document = components['schemas']['Document']
 export type DocumentType = components['schemas']['DocumentType']
@@ -9,9 +10,7 @@ export type DocumentVisibility = components['schemas']['DocumentVisibility']
 export type DocumentEntityType = NonNullable<Document['entity_type']>
 
 /** Роль владельца документа в типе (кто его прикладывает). */
-export type DocumentOwnerRole = NonNullable<
-  NonNullable<operations['createDocumentType']['requestBody']>['content']['application/json']['owner_role']
->
+export type DocumentOwnerRole = NonNullable<RequestBody<'createDocumentType'>['owner_role']>
 
 /**
  * Документы сущности (GET /documents?entity_type=&entity_id=).
@@ -86,10 +85,7 @@ export async function downloadDocument(
     parseAs: 'blob',
   })
   const blob = (await unwrap(result)) as Blob
-  const disposition = result.response.headers.get('content-disposition')
-  const match = disposition == null ? null : /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)
-
-  return { blob, filename: match?.[1] != null ? decodeURIComponent(match[1]) : null }
+  return { blob, filename: filenameFromResponse(result.response) }
 }
 
 /** Каталог типов документов (GET /document-types, доступно всем ролям). */
@@ -106,13 +102,11 @@ export async function listDocumentTypes(): Promise<DocumentType[]> {
  * (`DocumentGenerator`), а не человек через интерфейс. Поле обязательно в
  * сгенерированном типе — у него есть default в спеке, — поэтому передаём явно.
  */
-export async function createDocumentType(input: {
-  code: string
-  name: string
-  owner_role: DocumentOwnerRole
-  visibility?: DocumentVisibility
-  required?: boolean
-}): Promise<DocumentType> {
+export async function createDocumentType(
+  input: Omit<RequestBody<'createDocumentType'>, 'auto_generated' | 'required'> & {
+    required?: boolean
+  },
+): Promise<DocumentType> {
   const result = await client.POST('/document-types', {
     body: { ...input, required: input.required ?? false, auto_generated: false },
   })
@@ -121,14 +115,8 @@ export async function createDocumentType(input: {
 
 /** Правка типа документа (PUT /document-types/{id}, только суперадмин). */
 export async function updateDocumentType(
-  documentTypeId: string,
-  input: {
-    name?: string
-    owner_role?: DocumentOwnerRole
-    visibility?: DocumentVisibility
-    required?: boolean
-    active?: boolean
-  },
+  documentTypeId: number,
+  input: RequestBody<'updateDocumentType'>,
 ): Promise<DocumentType> {
   const result = await client.PUT('/document-types/{documentTypeId}', {
     params: { path: { documentTypeId } },
@@ -142,13 +130,11 @@ export async function updateDocumentType(
  * Тип не удаляется: на него ссылаются уже загруженные документы — он просто
  * перестаёт предлагаться при загрузке.
  */
-export async function deactivateDocumentType(documentTypeId: string): Promise<void> {
+export async function deactivateDocumentType(documentTypeId: number): Promise<void> {
   const result = await client.DELETE('/document-types/{documentTypeId}', {
     params: { path: { documentTypeId } },
   })
-  if (result.error !== undefined) {
-    throw result.error
-  }
+  ensureOk(result)
 }
 
 /**

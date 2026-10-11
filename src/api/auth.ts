@@ -1,8 +1,8 @@
-import { authClient, client, unwrap } from './client'
+import { authClient, client, ensureOk, unwrap } from './client'
 import type { components } from './schema'
+import type { RequestBody, ResponseBody } from './types'
 
 export type User = components['schemas']['User']
-export type ApiError = components['schemas']['Error']
 
 export interface LoginInput {
   email: string
@@ -11,29 +11,16 @@ export interface LoginInput {
   totpCode?: string
 }
 
+/** Пара токенов после входа — обязательные поля, без которых сессии нет. */
 export interface TokenPair {
   access_token: string
   refresh_token: string
   /** Время жизни access-токена в секундах. */
   expires_in?: number
-  token_type?: string
 }
 
-export interface RegisterInput {
-  company_name: string
-  inn: string
-  org_type: 'customer' | 'supplier' | 'both'
-  email: string
-  password: string
-  user_name: string
-  locale?: 'ru' | 'en'
-}
-
-export interface RegisterResult {
-  company_id?: string
-  user_id?: string
-  verification_status?: 'pending'
-}
+export type RegisterInput = RequestBody<'authRegister'>
+export type RegisterResult = ResponseBody<'authRegister', 201>
 
 /** Вход по email+паролю (POST /auth/token). Может бросить ApiError с признаком 2FA. */
 export async function loginRequest(input: LoginInput): Promise<TokenPair> {
@@ -47,23 +34,6 @@ export async function loginRequest(input: LoginInput): Promise<TokenPair> {
   const data = await unwrap(result)
   if (data.access_token == null || data.refresh_token == null) {
     throw new Error('API вернул токены без access_token/refresh_token')
-  }
-  return {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    expires_in: data.expires_in,
-    token_type: data.token_type,
-  }
-}
-
-/** Обновление пары токенов (ротация refresh-токена). */
-export async function refreshSession(refreshToken: string): Promise<TokenPair> {
-  const result = await authClient.POST('/auth/refresh', {
-    body: { refresh_token: refreshToken },
-  })
-  const data = await unwrap(result)
-  if (data.access_token == null || data.refresh_token == null) {
-    throw new Error('Refresh вернул неполный набор токенов')
   }
   return {
     access_token: data.access_token,
@@ -87,34 +57,16 @@ export async function verifyEmail(token: string): Promise<{ email_verified?: boo
 /** Повторная отправка письма подтверждения (POST /auth/email/resend). */
 export async function resendVerification(email: string): Promise<void> {
   const result = await client.POST('/auth/email/resend', { body: { email } })
-  if (result.error !== undefined) {
-    throw result.error as ApiError
-  }
-}
-
-/** Ошибка forgot-password: для 429 (rate_limited) дополнена Retry-After из заголовка. */
-export interface ForgotPasswordError extends ApiError {
-  retryAfter?: number
+  ensureOk(result)
 }
 
 /**
  * Запрос на восстановление пароля (POST /auth/password/forgot, публичный).
  * API не раскрывает существование аккаунта: 202 возвращается в любом случае.
- * 429 (rate_limited) — бросается ForgotPasswordError с retryAfter.
+ * 429 (rate_limited) — ApiError с `retryAfter` из заголовка Retry-After.
  */
 export async function forgotPassword(email: string): Promise<void> {
-  const result = await authClient.POST('/auth/password/forgot', { body: { email } })
-  if (result.error !== undefined) {
-    const error = result.error as ForgotPasswordError
-    const retryAfter = result.response?.headers.get('Retry-After')
-    if (retryAfter != null && retryAfter !== '') {
-      const parsed = Number(retryAfter)
-      if (Number.isFinite(parsed) && parsed > 0) {
-        error.retryAfter = parsed
-      }
-    }
-    throw error
-  }
+  ensureOk(await authClient.POST('/auth/password/forgot', { body: { email } }))
 }
 
 /** Сброс пароля по токену из письма (POST /auth/password/reset, публичный). */
@@ -122,9 +74,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
   const result = await authClient.POST('/auth/password/reset', {
     body: { token, new_password: newPassword },
   })
-  if (result.error !== undefined) {
-    throw result.error as ApiError
-  }
+  ensureOk(result)
 }
 
 /** Отзыв refresh-токена (POST /auth/logout, идемпотентно). */
@@ -157,11 +107,7 @@ export async function getMe(): Promise<{ user?: User; company?: components['sche
 }
 
 /** Обновление собственного профиля (PATCH /users/me). */
-export async function updateMe(input: {
-  name?: string
-  current_password?: string
-  new_password?: string
-}): Promise<User> {
+export async function updateMe(input: RequestBody<'updateMe'>): Promise<User> {
   const result = await client.PATCH('/users/me', { body: input })
   return unwrap(result)
 }

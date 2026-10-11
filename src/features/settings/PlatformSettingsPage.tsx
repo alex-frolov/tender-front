@@ -12,15 +12,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { getPlatformTimezone, getRateLimits, updatePlatformTimezone } from '@/api/platform'
-import { useAuth } from '@/features/auth/AuthContext'
+import { queryKeys } from '@/api/queryKeys'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { AccessDeniedCard } from './AccessDeniedCard'
 import { ContractTypesCard } from './ContractTypesCard'
 import { DocumentTypesCard } from './DocumentTypesCard'
-
-const TIMEZONE_KEY = ['platform-timezone'] as const
-const RATE_LIMITS_KEY = ['rate-limits'] as const
 
 /**
  * Список IANA-таймзон из самого браузера (Intl). Хардкодить его во фронте
@@ -90,12 +88,12 @@ export function PlatformSettingsPage() {
   const [formError, setFormError] = useState<string | null>(null)
 
   const timezoneQuery = useQuery({
-    queryKey: TIMEZONE_KEY,
+    queryKey: queryKeys.platformTimezone,
     queryFn: getPlatformTimezone,
     enabled: isPlatformAdmin,
   })
   const limitsQuery = useQuery({
-    queryKey: RATE_LIMITS_KEY,
+    queryKey: queryKeys.rateLimits,
     queryFn: getRateLimits,
     enabled: isPlatformAdmin,
   })
@@ -111,7 +109,7 @@ export function PlatformSettingsPage() {
   const updateMutation = useMutation({
     mutationFn: updatePlatformTimezone,
     onSuccess: (next) => {
-      queryClient.setQueryData(TIMEZONE_KEY, next)
+      queryClient.setQueryData(queryKeys.platformTimezone, next)
       setSaved(true)
     },
   })

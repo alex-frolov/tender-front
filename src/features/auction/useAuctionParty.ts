@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { getTender } from '@/api/endpoints'
 import type { components } from '@/api/schema'
-import { useAuth } from '@/features/auth/AuthContext'
+import { queryKeys } from '@/api/queryKeys'
+import { useAuth } from '@/features/auth/useAuth'
 import { canManageTender, isTenderCustomer } from '@/lib/tenderAccess'
 
 type AuctionBid = components['schemas']['AuctionBid']
@@ -34,7 +35,7 @@ export function useAuctionParty(
   const { user } = useAuth()
 
   const tenderQuery = useQuery({
-    queryKey: ['tender', tenderId],
+    queryKey: queryKeys.tender(tenderId),
     queryFn: () => getTender(tenderId ?? ''),
     enabled: enabled && tenderId != null,
   })

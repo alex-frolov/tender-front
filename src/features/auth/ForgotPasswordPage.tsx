@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { forgotPassword, type ForgotPasswordError } from '@/api/auth'
+import { forgotPassword } from '@/api/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { apiErrorMessage, isApiError } from '@/lib/errors'
+import { apiErrorMessage, isApiErrorCode, type ApiError } from '@/lib/errors'
 
 /** Сообщение при 429 (rate_limited): с Retry-After, если заголовок пришёл. */
-function rateLimitMessage(error: ForgotPasswordError): string {
+function rateLimitMessage(error: ApiError): string {
   if (error.retryAfter != null) {
     return `Слишком много запросов. Попробуйте ещё раз через ${error.retryAfter} сек.`
   }
@@ -33,8 +33,8 @@ export function ForgotPasswordPage() {
       await forgotPassword(email)
       setSent(true)
     } catch (err) {
-      if (isApiError(err) && err.code === 'rate_limited') {
-        setError(rateLimitMessage(err as ForgotPasswordError))
+      if (isApiErrorCode(err, 'rate_limited')) {
+        setError(rateLimitMessage(err))
       } else {
         setError(apiErrorMessage(err))
       }

@@ -9,6 +9,7 @@ import {
   type BidDecision,
 } from '@/api/bids'
 import type { components } from '@/api/schema'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -20,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { useCursorPage, type CursorPageData } from '@/hooks/useCursorPage'
 import { apiErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
@@ -89,7 +90,7 @@ export function TenderBids({ tender }: { tender: Tender }) {
   const [isActing, setIsActing] = useState(false)
 
   const firstPageQuery = useQuery({
-    queryKey: ['bids', tenderId, null],
+    queryKey: queryKeys.bids.page(tenderId, null),
     queryFn: () => listBids(tenderId),
     enabled: tenderId !== '' && bidsRequired,
   })
@@ -113,7 +114,7 @@ export function TenderBids({ tender }: { tender: Tender }) {
 
   function fetchNextPage(cursor: string | null): Promise<CursorPageData<Bid>> {
     return queryClient.fetchQuery({
-      queryKey: ['bids', tenderId, cursor],
+      queryKey: queryKeys.bids.page(tenderId, cursor),
       queryFn: () => listBids(tenderId, cursor),
     })
   }
@@ -129,6 +130,7 @@ export function TenderBids({ tender }: { tender: Tender }) {
 
   /** Своя заявка на этот лот уже подана — повторная подача её заменит. */
   const ownBids = items.filter((bid) => bid.supplier_id === companyId)
+  const ownBid = ownBids[0]
   const hasAdmitted = items.some((bid) => isBidAdmitted(bid.status))
   const ownAdmitted = ownBids.some((bid) => isBidAdmitted(bid.status))
 
@@ -160,7 +162,7 @@ export function TenderBids({ tender }: { tender: Tender }) {
       }
       setPending(null)
       setReason('')
-      await queryClient.invalidateQueries({ queryKey: ['bids', tenderId] })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.bids.byTender(tenderId) })
     } catch (err) {
       setActionError(apiErrorMessage(err))
     } finally {
@@ -228,11 +230,11 @@ export function TenderBids({ tender }: { tender: Tender }) {
               возможна, пока идёт приём и заявка не отозвана; после рассмотрения
               раздел остаётся на чтение (своя заявка видна автору в любом
               статусе — см. BidService::listForCompany на бэкенде). */}
-          {!isCustomer && ownBids.length > 0 && (
+          {!isCustomer && ownBid != null && (
             <div className="px-6 pb-4">
               <BidDocuments
-                bid={ownBids[0]}
-                canEdit={canAct && accepting && ownBids[0].status === 'submitted'}
+                bid={ownBid}
+                canEdit={canAct && accepting && ownBid.status === 'submitted'}
               />
             </div>
           )}
@@ -412,7 +414,7 @@ export function TenderBids({ tender }: { tender: Tender }) {
         <BidSubmitForm
           tender={tender}
           supplierId={companyId}
-          defaultLotId={ownBids[0]?.lot_id ?? undefined}
+          defaultLotId={ownBid?.lot_id ?? undefined}
           onCancel={() => setSubmitOpen(false)}
           onSubmitted={() => setSubmitOpen(false)}
         />

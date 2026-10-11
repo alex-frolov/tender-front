@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Check, Search, X } from 'lucide-react'
 import { searchCompanies, type CompanyBrief } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { apiErrorMessage } from '@/lib/errors'
@@ -41,7 +42,7 @@ export function CompanyPicker({
   }, [query])
 
   const searchQuery = useQuery({
-    queryKey: ['company-search', debounced],
+    queryKey: queryKeys.companySearch(debounced),
     queryFn: () => searchCompanies(debounced),
     enabled: debounced.length >= MIN_QUERY && selected == null,
     staleTime: 60_000,

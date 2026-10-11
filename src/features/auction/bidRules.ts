@@ -154,8 +154,3 @@ export function validateBid(priceMinor: number, rules: BidRules): string | null 
 export function minorToInput(minor: number): string {
   return (minor / 100).toFixed(2)
 }
-
-/** Значение поля ввода (рубли, запятая или точка) → minor units; NaN при мусоре. */
-export function inputToMinor(value: string): number {
-  return Math.round(Number(value.replace(',', '.').trim()) * 100)
-}

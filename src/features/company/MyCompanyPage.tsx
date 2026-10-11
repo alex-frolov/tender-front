@@ -2,13 +2,14 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { updateCompany } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { FullPageSpinner } from '@/components/auth/ProtectedRoute'
-import { useAuth } from '@/features/auth/AuthContext'
-import { COMPANY_QUERY_KEY, useCompanyQuery, type Company } from '@/features/company/useCompany'
+import { useAuth } from '@/features/auth/useAuth'
+import { useCompanyQuery, type Company } from '@/features/company/useCompany'
 import {
   COMPANY_STATUS_BADGE_VARIANTS,
   COMPANY_STATUS_LABELS,
@@ -79,7 +80,7 @@ export function MyCompanyPage() {
   const updateMutation = useMutation({
     mutationFn: updateCompany,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: COMPANY_QUERY_KEY })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.company })
     },
   })
 

@@ -6,6 +6,7 @@ import {
   listProcurementPlans,
   type ProcurementPlanItem,
 } from '@/api/planning'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage, isApiError } from '@/lib/errors'
 import { formatDate } from '@/lib/format'
 
@@ -54,7 +55,7 @@ export function ProcurementPlansPage() {
   const isAdmin = user?.role === 'admin' || user?.role === 'platform_admin'
 
   const plansQuery = useQuery({
-    queryKey: ['procurement-plans'],
+    queryKey: queryKeys.procurementPlans,
     queryFn: () => listProcurementPlans(),
   })
 
@@ -66,7 +67,7 @@ export function ProcurementPlansPage() {
   const createMutation = useMutation({
     mutationFn: createProcurementPlan,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['procurement-plans'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.procurementPlans })
     },
   })
 

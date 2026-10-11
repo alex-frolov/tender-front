@@ -5,7 +5,7 @@
 NPM := npm
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev build preview lint check gen ui outdated audit clean distclean
+.PHONY: help install dev build preview lint test check gen ui outdated audit clean distclean
 
 help: ## Показать список доступных команд
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -32,8 +32,11 @@ preview: ## Отдать собранный dist/ локально
 lint: ## oxlint
 	$(NPM) run lint
 
-check: lint build ## Всё, что гоняет CI: lint + тайпчек + сборка
-	@echo "OK: lint + typecheck + build"
+test: ## Юнит-тесты (vitest run)
+	$(NPM) test
+
+check: lint test build ## Всё, что гоняет CI: lint + тесты + тайпчек + сборка
+	@echo "OK: lint + test + typecheck + build"
 
 # ---------- Контракт ----------
 

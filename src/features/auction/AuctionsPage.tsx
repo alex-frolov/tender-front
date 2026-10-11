@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { listAuctions } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -83,7 +84,7 @@ export function AuctionsPage() {
   const [snapshots, setSnapshots] = useState<Record<string, AuctionLiveSnapshot>>({})
 
   const auctionsQuery = useQuery({
-    queryKey: ['auctions'],
+    queryKey: queryKeys.auctions,
     queryFn: listAuctions,
     staleTime: 15_000,
   })

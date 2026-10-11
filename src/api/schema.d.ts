@@ -402,16 +402,19 @@ export interface paths {
          *     the procurement is open to the outside, and who exactly may see it depends on
          *     the status:
          *
-         *       * `draft`, `withdrawn`, `evaluation` — the customer's staff only. These are
-         *         the customer's internal stages; such tenders are never listed to anyone else.
-         *       * `published`, `accepting_bids`, `bidding` — everyone if the tender is open
-         *         (access_type=open); if it is closed (access_type=contract_holders), only the
-         *         customer and companies that have an active multi_use (reusable) contract
-         *         with that customer.
-         *       * `awarding`, `contract`, `closed`, `cancelled` — the customer and the
-         *         performer company only (the supplier whose bid won). A contract no longer
-         *         grants access here: once the winner is picked the procurement stops being
-         *         public even for companies that were entitled to take part.
+         *       * `draft`, `withdrawn` — the customer's staff only. There is no announced
+         *         procedure yet; such tenders are never listed to anyone else.
+         *       * `published`, `accepting_bids`, `bidding`, `evaluation`, `awarding`,
+         *         `contract` — everyone if the tender is open (access_type=open); if it is
+         *         closed (access_type=contract_holders), only the customer and companies
+         *         that have an active multi_use (reusable) contract with that customer.
+         *         The whole active part of the procedure stays public: evaluation, the
+         *         award and the work under the contract are the outcome of an announced
+         *         procedure, not a private exchange between the parties.
+         *       * `closed`, `cancelled` — the customer and the performer company only
+         *         (the supplier whose bid won). A contract no longer grants access here:
+         *         a finished procurement stops being public even for companies that were
+         *         entitled to take part.
          *
          *     Visibility does not grant participation: submitting a bid to a closed tender
          *     still requires the contract (409 access_denied) — see
@@ -439,10 +442,22 @@ export interface paths {
          * Tender card
          * @description Card of a tender visible to the actor's company — the per-status rule is the
          *     same as for GET /tenders (own tender in any status; another company's tender
-         *     only in the trading statuses, subject to access_type, or after the award only
-         *     for the performer). A tender that is not visible is indistinguishable from a
-         *     missing one — 404, so that closed procurements of other companies are not
-         *     disclosed.
+         *     throughout the active procedure, subject to access_type, and after it is
+         *     finished only for the performer). A tender that is not visible is
+         *     indistinguishable from a missing one — 404, so that closed procurements of
+         *     other companies are not disclosed.
+         *
+         *     Seeing a tender is not the same as seeing everything inside it. For a viewer
+         *     who is neither the customer nor the performer of a lot:
+         *
+         *       * lots in `closed`/`cancelled` are omitted from `lots` — a finished lot may
+         *         sit inside a still-active tender (the tender status aggregates lots as a
+         *         bottleneck), and it is no longer public;
+         *       * `lots[].winner_bid_id` is `null` — the performer's identity is not
+         *         disclosed (the bid id would resolve to a company through
+         *         GET /tenders/{tenderId}/bids);
+         *       * documents follow their own rule (only `visibility=public` of another
+         *         company is readable).
          */
         get: operations["getTender"];
         put?: never;
@@ -730,14 +745,15 @@ export interface paths {
          *     status must be open to the viewer. Own auctions are listed in any status; for
          *     another company's auction the status decides:
          *
-         *       * `draft`, `agreement`, `new`, `scheduled`, `paused`, `choice`, `expired`,
-         *         `deleted` — the customer's staff only (preparation, a pause, picking the
-         *         winner and housekeeping states are the customer's own decisions);
+         *       * `draft`, `agreement`, `new`, `scheduled` — the customer's staff only
+         *         (preparing the trading session is the customer's own business);
          *       * `trade` — everyone the tender is visible to: trading is public within the
          *         procurement's audience;
-         *       * `approve`, `in_work`, `done_by_performer`, `done`, `claim`,
-         *         `done_by_claim`, `cancelled` — the customer and the performer company
-         *         (the winner of the lot) only.
+         *       * `paused`, `choice`, `approve`, `in_work`, `done_by_performer`, `done`,
+         *         `claim`, `done_by_claim`, `cancelled`, `expired`, `deleted` — the customer
+         *         and the performer company (the winner of the lot) only: once trading is
+         *         over the auction carries the fate of one specific lot. While no winner is
+         *         known this is effectively "the customer only".
          *
          *     Compact items: id, tender/lot, type, status, prices, timer. No pagination
          *     (one auction per lot — the list size is bounded by the business flow).
@@ -756,7 +772,7 @@ export interface paths {
          *     Validation: a step is required for REDUCTION+fixed; limits must be consistent;
          *     scheduled_start_at (if set) must be in the future.
          *     Access: the auction.control permission (admin/manager; agent — 403); customer only
-         *     (tender tenant). A duplicate auction for the lot → 409 {auction_exists}.
+         *     (tender tenant). A duplicate auction for the lot → 409 {conflict}.
          */
         post: operations["createAuction"];
         delete?: never;
@@ -812,9 +828,9 @@ export interface paths {
          *     customer (tender owner) and observers (platform_admin) always; while trading
          *     (`trade`) — anyone the tender is visible to, plus admitted participants
          *     (bids.status = admitted) even if the tender stopped being visible to them
-         *     mid-auction; from `approve` onwards — the performer company only; in the
-         *     preparation, `paused`, `choice` and housekeeping statuses — nobody but the
-         *     customer. Everyone else — 403.
+         *     mid-auction; after trading (`paused`, `choice`, `approve` and onwards,
+         *     including `expired`/`deleted`) — the performer company only; in the
+         *     preparation statuses — nobody but the customer. Everyone else — 403.
          */
         get: operations["getAuctionState"];
         put?: never;
@@ -838,7 +854,7 @@ export interface paths {
          *     (public hub URL + private topic `auction:{id}` + subscribe-JWT) and connects to the hub via EventSource.
          *     Privacy: a subscription is issued to whoever may see the auction in its current status
          *     (same matrix as GET /auctions — the customer and observers always, during `trade` also
-         *     everyone the tender is visible to plus admitted participants, from `approve` onwards only
+         *     everyone the tender is visible to plus admitted participants, after trading only
          *     the performer company); Mercure JWT authorization, sub permission.
          *     Publishing is done by the core with the publish JWT (REST /auctions/{id}/bids — bids).
          *     The response includes the current snapshot (`state`) for immediate rendering; the hub sends live events after connecting:
@@ -867,7 +883,7 @@ export interface paths {
          *     (null); after trading ends, participant identities are revealed.
          *     Access: whoever may see the auction in its current status (same matrix as
          *     GET /auctions — the customer and observers always, during `trade` also everyone
-         *     the tender is visible to plus admitted participants, from `approve` onwards only
+         *     the tender is visible to plus admitted participants, after trading only
          *     the performer company).
          */
         get: operations["listAuctionBids"];
@@ -2108,7 +2124,10 @@ export interface components {
             execution_start_at?: string | null;
             trade_end_lead_hours?: number;
             status?: string;
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description ID of the winning bid (bids.id). Disclosed to the customer and to the performer of this lot only; null for any other viewer, so the performer's identity is not revealed.
+             */
             winner_bid_id?: string | null;
         };
         ProcurementPlanCreate: {
@@ -2898,57 +2917,71 @@ export interface components {
             /** Format: date-time */
             created_at?: string;
         };
+        /**
+         * @description Error body (RFC 9457 subset) for every error this API produces itself — domain
+         *     exceptions, security (401/403) and the auth endpoints. `title` is always present;
+         *     `code` is present for all of them (see ErrorCode); `detail` when there is a
+         *     human-readable explanation. Validation errors (422) carry the offending fields in
+         *     `detail` as "field: message" lines. There is no `trace_id` member, and `type`/
+         *     `status` are sent only by 429 (with `retry_after`, seconds — the same value as the
+         *     Retry-After header): the HTTP status is the status line of the response.
+         *     Requests that never reach the application (unknown route, uncaught server
+         *     failure) are rendered by the framework and may not follow this schema.
+         */
         Error: {
-            /**
-             * @description Error type URI (or about:blank)
-             * @example about:blank
-             */
-            type: string;
             /** @example State conflict */
             title: string;
-            /** @example 409 */
-            status: number;
-            detail: string;
             /**
-             * @description Code from the error registry (see below)
+             * @description Code from the error registry (ErrorCode)
              * @example bid_rejected
              */
-            code: string;
-            /**
-             * Format: uuid
-             * @description For end-to-end tracing
-             */
-            trace_id: string;
-            /** @description Validation details (for 422) */
-            errors?: {
-                field?: string;
-                message?: string;
-            }[];
+            code?: string;
+            /** @example Only admitted participants can place bids */
+            detail?: string;
+            /** @description 429 only — 'https://tools.ietf.org/html/rfc6585#section-4' */
+            type?: string;
+            /** @description 429 only — duplicates the HTTP status */
+            status?: number;
+            /** @description 429 only — seconds until the limit resets (also in Retry-After) */
+            retry_after?: number;
         };
         /**
-         * @description Error code registry:
-         *     - validation_error (422) — invalid input data
-         *     - unauthorized (401) — missing/expired token
-         *     - forbidden (403) — no permissions (incl. a private document)
+         * @description Error code registry (every code the API sends; the list is checked against
+         *     the source — a code missing here is a spec bug):
+         *     - validation_error (422) — invalid input data, incl. a missing cancellation reason
+         *       or code=other without text; the fields are listed in detail
+         *     - invalid_credentials (401) — missing/expired/invalid token, wrong sign-in data
+         *       (POST /auth/token does not tell bad credentials from a blocked/unverified user),
+         *       invalid refresh token
+         *     - two_factor_required (401) — POST /auth/token: the password is correct, a TOTP
+         *       code is missing or wrong; retry with totp_code
+         *     - invalid_verification_token (401) — POST /auth/email/verify: unknown/expired token
+         *     - invalid_reset_token (401) — POST /auth/password/reset: unknown/expired/used token
+         *     - forbidden (403) — no permissions
+         *     - document_forbidden (403) — another company's private document
+         *     - org_pending (403) — the company is not approved by the superadmin: the customer cannot create tenders, the performer cannot submit bids
          *     - not_found (404) — resource not found / tender not visible
+         *     - conflict (409) — generic state conflict (e.g. a second auction for a lot)
          *     - state_transition_forbidden (409) — invalid status transition
-         *     - bid_rejected (409) — the bid failed validation (price/step/limits)
-         *     - duplicate_bid (409) — duplicate bid (idempotency)
+         *     - bid_rejected (409) — the bid failed validation (price/step/limits, not admitted)
+         *     - duplicate_bid (409) — one price proposal per participant per window (PRICE_REQUEST)
          *     - auction_not_trade (409) — the auction is not in TRADE
          *     - auction_window_closed (409) — the trading window is closed by time (planned_end_at has passed) while the auction is still in TRADE
+         *     - no_winner (409) — no accepted bids to pick a winner from
+         *     - wrong_auction_type (409) — automatic winner selection outside REDUCTION
+         *     - invalid_winner_bid (409) — the bid is not an accepted proposal of this auction
          *     - contract_required (409) — DONE without a valid contract (B2)
-         *     - access_denied (409) — closed tender without an active framework contract
-         *     - org_pending (403) — the company is not approved by the superadmin: the customer cannot create tenders, the performer cannot submit bids
-         *     - email_not_verified (403) — the user's email is not verified
-         *     - two_factor_required (401) — second factor (TOTP) required to complete sign-in; retry with totp_code
-         *     - contract_expired (409) — contract expired/terminated
+         *     - access_denied (409) — closed tender without an active framework contract; the
+         *       reason (contract_required | contract_expired | contract_terminated) is in detail
          *     - idempotency_conflict (409) — repeated Idempotency-Key with a different payload
-         *     - cancel_reason_required (422) — cancellation without a reason
-         *     - other_reason_required (422) — code=other without text
          *     - rating_not_allowed (409) — rating outside DONE/DONE_BY_CLAIM
+         *     - duplicate_favorite (409) — the tender is already in favorites
+         *     - last_active_admin (409) — removing/demoting the last active admin of a company
+         *     - export_not_ready (409) — downloading an export that is not ready yet
          *     - lots_sum_mismatch (422) — Σ lots ≠ НМЦК
          *     - rate_limited (429) — limit exceeded (Retry-After)
-         *     - internal_error (500) — internal error
+         *     - plugin_configuration (500) — the procurement plugin is misconfigured
+         *     - event_schema_violation (500) — an outgoing event failed its JSON Schema
          */
         ErrorCode: string;
     };
@@ -3083,13 +3116,16 @@ export interface operations {
                 };
             };
             /**
-             * @description Bad credentials, or second factor required. When 2FA is enabled the error
-             *     carries code=totp_required / two_factor_required (see ErrorCode registry) —
-             *     retry the same request with totp_code.
+             * @description Sign-in refused. Two codes, deliberately no more:
+             *       * `invalid_credentials` — wrong email or password, and equally an unknown,
+             *         deleted or blocked user or an unverified email: these are told apart
+             *         only in metrics, so the response does not reveal whether an account
+             *         exists or what state it is in;
+             *       * `two_factor_required` — the password is correct, 2FA is enabled and
+             *         totp_code is missing or wrong (the detail says which): retry the same
+             *         request with totp_code.
              */
             401: components["responses"]["Unauthorized"];
-            /** @description Email not verified / user deleted / blocked */
-            403: components["responses"]["Forbidden"];
         };
     };
     authRefresh: {
@@ -5303,7 +5339,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                documentTypeId: string;
+                /** @description Numeric identifier of the document type (bigint) */
+                documentTypeId: number;
             };
             cookie?: never;
         };
@@ -5339,7 +5376,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                documentTypeId: string;
+                /** @description Numeric identifier of the document type (bigint) */
+                documentTypeId: number;
             };
             cookie?: never;
         };

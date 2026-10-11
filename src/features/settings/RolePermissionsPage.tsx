@@ -19,13 +19,11 @@ import {
   type Permission,
   type PermissionGroup,
 } from '@/api/platform'
-import { useAuth } from '@/features/auth/AuthContext'
+import { queryKeys } from '@/api/queryKeys'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage } from '@/lib/errors'
 import { ROLE_LABELS } from '@/lib/users'
 import { AccessDeniedCard } from './AccessDeniedCard'
-
-const PERMISSIONS_KEY = ['permissions'] as const
-const ROLE_PERMISSIONS_KEY = ['role-permissions'] as const
 
 /** Роли, у которых набор прав настраивается (контракт PUT /role-permissions). */
 const CONFIGURABLE_ROLES: readonly ConfigurableRole[] = ['manager', 'agent']
@@ -88,12 +86,12 @@ export function RolePermissionsPage() {
   const [savedRole, setSavedRole] = useState<ConfigurableRole | null>(null)
 
   const catalogQuery = useQuery({
-    queryKey: PERMISSIONS_KEY,
+    queryKey: queryKeys.permissions,
     queryFn: listPermissions,
     enabled: isPlatformAdmin,
   })
   const rolesQuery = useQuery({
-    queryKey: ROLE_PERMISSIONS_KEY,
+    queryKey: queryKeys.rolePermissions,
     queryFn: getRolePermissions,
     enabled: isPlatformAdmin,
   })
@@ -125,7 +123,7 @@ export function RolePermissionsPage() {
     mutationFn: ({ role, permissions }: { role: ConfigurableRole; permissions: Record<string, boolean> }) =>
       updateRolePermissions(role, permissions),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ROLE_PERMISSIONS_KEY })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rolePermissions })
     },
   })
 

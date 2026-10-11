@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { forfeitSecurity, listSecurities, releaseSecurity } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,14 +37,14 @@ import {
 export function ContractSecurities({ canForfeit }: { canForfeit: boolean }) {
   const queryClient = useQueryClient()
   const securitiesQuery = useQuery({
-    queryKey: ['securities'],
+    queryKey: queryKeys.securities,
     queryFn: () => listSecurities(),
   })
 
   const [error, setError] = useState<string | null>(null)
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['securities'] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.securities })
   }
 
   const releaseMutation = useMutation({ mutationFn: releaseSecurity, onSuccess: invalidate })

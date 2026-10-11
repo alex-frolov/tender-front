@@ -2,10 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock } from 'lucide-react'
 import { scheduleAuction } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage } from '@/lib/errors'
 import { AUCTION_STATUS_LABELS, type AuctionStatus } from './auctionStatus'
 
@@ -37,8 +38,8 @@ export function AuctionScheduleForm({
   const mutation = useMutation({
     mutationFn: (iso: string) => scheduleAuction(auctionId, iso),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['auction-state', auctionId] })
-      void queryClient.invalidateQueries({ queryKey: ['auctions'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.auctionState(auctionId) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.auctions })
     },
   })
 

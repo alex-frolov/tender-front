@@ -12,6 +12,7 @@ import {
   type LotUpdate,
 } from '@/api/endpoints'
 import type { components } from '@/api/schema'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,9 +27,9 @@ import {
 } from '@/components/ui/table'
 import { AuctionCreateForm } from '@/features/auction/AuctionCreateForm'
 import { AuctionStatusBadge } from '@/features/auction/AuctionStatusBadge'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage } from '@/lib/errors'
-import { formatMoney } from '@/lib/money'
+import { formatMoney, minorToRublesInput, parseRublesToMinor } from '@/lib/money'
 import { canManageTender } from '@/lib/tenderAccess'
 
 type Tender = components['schemas']['Tender']
@@ -53,20 +54,6 @@ const EMPTY_FORM: LotFormState = {
   vatRate: '',
   quantity: '',
   unit: '',
-}
-
-/** Рубли из формы → minor units (целые копейки). */
-function toMinor(value: string): number | null {
-  const trimmed = value.trim()
-  if (trimmed === '') return null
-  const parsed = Number(trimmed.replace(',', '.'))
-  if (!Number.isFinite(parsed)) return null
-  return Math.round(parsed * 100)
-}
-
-/** Minor units → строка для input в рублях. */
-function toRubles(minor: number | undefined): string {
-  return minor == null ? '' : String(minor / 100)
 }
 
 /** Общие поля формы лота (используются и при создании, и при правке). */
@@ -188,8 +175,8 @@ export function TenderLots({ tender }: { tender: Tender }) {
   const currency = tender.currency
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['tender', tenderId] })
-    void queryClient.invalidateQueries({ queryKey: ['tenders'] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.tender(tenderId) })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.tenders.all })
   }
 
   const createMutation = useMutation({
@@ -214,7 +201,7 @@ export function TenderLots({ tender }: { tender: Tender }) {
   // не предлагать создать второй аукцион: бэкенд отбивает повтор 409
   // («Auction already exists for the lot») независимо от статуса первого.
   const auctionsQuery = useQuery({
-    queryKey: ['auctions'],
+    queryKey: queryKeys.auctions,
     queryFn: listAuctions,
     staleTime: 30_000,
   })
@@ -245,7 +232,7 @@ export function TenderLots({ tender }: { tender: Tender }) {
   function openEdit(lot: Lot): void {
     setEditForm({
       title: lot.title ?? '',
-      priceNet: toRubles(lot.price_net_minor),
+      priceNet: minorToRublesInput(lot.price_net_minor),
       vatRate: lot.vat_rate != null ? String(lot.vat_rate) : '',
       quantity: lot.quantity != null ? String(lot.quantity) : '',
       unit: lot.unit ?? '',
@@ -261,7 +248,7 @@ export function TenderLots({ tender }: { tender: Tender }) {
     setCreateError(null)
 
     const title = createForm.title.trim()
-    const priceNet = toMinor(createForm.priceNet)
+    const priceNet = parseRublesToMinor(createForm.priceNet)
     if (title === '') {
       setCreateError('Укажите наименование лота.')
       return
@@ -309,7 +296,7 @@ export function TenderLots({ tender }: { tender: Tender }) {
     }
     if (title !== (lot.title ?? '')) input.title = title
 
-    const priceNet = toMinor(editForm.priceNet)
+    const priceNet = parseRublesToMinor(editForm.priceNet)
     if (editForm.priceNet.trim() === '') {
       setEditError('Укажите цену лота без НДС.')
       return

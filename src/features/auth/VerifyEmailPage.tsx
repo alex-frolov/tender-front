@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { resendVerification, verifyEmail } from '@/api/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage } from '@/lib/errors'
 
 type Status =

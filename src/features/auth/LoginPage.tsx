@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage, isTotpRequired } from '@/lib/errors'
 
 /**
@@ -64,8 +64,14 @@ export function LoginPage() {
       navigate(from, { replace: true })
     } catch (err) {
       if (isTotpRequired(err)) {
+        // Тот же код two_factor_required приходит и на неверный TOTP: если поле
+        // уже показано, значит, код ввели, но он не подошёл.
+        setError(
+          needTotp
+            ? 'Код не подошёл. Проверьте время на устройстве и введите новый код.'
+            : 'Для входа нужен код из приложения-аутентификатора (2FA).',
+        )
         setNeedTotp(true)
-        setError('Для входа нужен код из приложения-аутентификатора (2FA).')
       } else {
         setError(apiErrorMessage(err))
       }

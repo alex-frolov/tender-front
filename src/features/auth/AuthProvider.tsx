@@ -1,39 +1,18 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { refreshTokens } from '@/api/client'
 import { clearTokens, getRefreshToken, setTokens } from '@/lib/auth-store'
 import { onSessionExpired } from '@/lib/authEvents'
 import {
   getMe,
   loginRequest,
   logoutRequest,
-  refreshSession,
   registerRequest,
   type LoginInput,
   type RegisterInput,
-  type RegisterResult,
   type User,
 } from '@/api/auth'
-
-interface AuthContextValue {
-  user: User | null
-  isAuthenticated: boolean
-  /** true, пока при монтировании идёт восстановление сессии (refresh + профиль). */
-  isLoading: boolean
-  login: (input: LoginInput) => Promise<void>
-  register: (input: RegisterInput) => Promise<RegisterResult>
-  logout: () => Promise<void>
-  refreshUser: () => Promise<User | null>
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null)
+import { AuthContext, type AuthContextValue } from './useAuth'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -52,22 +31,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => onSessionExpired(handleSessionExpired), [handleSessionExpired])
 
   // Восстановление сессии при монтировании: есть refresh → POST /auth/refresh → GET /users/me.
+  // Refresh идёт через общий refreshTokens(): StrictMode запускает этот эффект
+  // дважды, и второй самостоятельный refresh тем же токеном получил бы 401
+  // (бэкенд отзывает использованный refresh) и стёр бы только что выданную пару.
   useEffect(() => {
     let cancelled = false
 
     async function bootstrap(): Promise<void> {
-      const refreshToken = getRefreshToken()
-      if (refreshToken == null) {
+      if (getRefreshToken() == null) {
         if (!cancelled) setIsLoading(false)
         return
       }
       try {
-        const tokens = await refreshSession(refreshToken)
-        setTokens(tokens)
+        const outcome = await refreshTokens()
+        // auth-failed — refresh мёртв, чистим; network-failed — сервер недоступен,
+        // токен оставляем: сессия восстановится при следующей загрузке.
+        if (outcome === 'auth-failed') clearTokens()
+        if (outcome !== 'ok') return
         const me = await getMe()
         if (!cancelled) setUser(me.user ?? null)
       } catch {
-        if (!cancelled) clearTokens()
+        // Профиль не загрузился — без пользователя приложение покажет вход.
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -127,12 +111,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext)
-  if (ctx == null) {
-    throw new Error('useAuth должен использоваться внутри <AuthProvider>')
-  }
-  return ctx
 }

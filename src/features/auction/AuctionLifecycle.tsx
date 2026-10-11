@@ -10,6 +10,7 @@ import {
   startAuctionWork,
 } from '@/api/endpoints'
 import type { components } from '@/api/schema'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage } from '@/lib/errors'
 import { formatMoney } from '@/lib/money'
 import { AUCTION_STATUS_LABELS, type AuctionStatus } from './auctionStatus'
@@ -86,9 +87,9 @@ export function AuctionLifecycle({
   const [done, setDone] = useState<string | null>(null)
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['auction-state', auctionId] })
-    void queryClient.invalidateQueries({ queryKey: ['auction-bids', auctionId] })
-    void queryClient.invalidateQueries({ queryKey: ['auctions'] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.auctionState(auctionId) })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.auctionBids(auctionId) })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.auctions })
   }
 
   const mutation = useMutation({
@@ -304,7 +305,7 @@ export function AuctionLifecycle({
                 onClick={() =>
                   void run(async () => {
                     await rateTender(tenderId, Number(rating))
-                    void queryClient.invalidateQueries({ queryKey: ['tender', tenderId] })
+                    void queryClient.invalidateQueries({ queryKey: queryKeys.tender(tenderId) })
                   }, 'Оценка сохранена.')
                 }
               >

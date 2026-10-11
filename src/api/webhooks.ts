@@ -1,4 +1,4 @@
-import { client, unwrap } from './client'
+import { client, ensureOk, unwrap } from './client'
 import type { components, operations } from './schema'
 
 export type Webhook = components['schemas']['Webhook']
@@ -50,15 +50,11 @@ export async function updateWebhook(webhookId: string, input: WebhookUpdate): Pr
  * Удаление подписки (DELETE /webhooks/{id}, 204).
  *
  * В спеке у операции описан ТОЛЬКО ответ 204, поэтому openapi-fetch не выводит
- * для неё ветку `error` (тип результата — never). Рантайм при этом отдаёт
- * обычную ошибку RFC 9457 на 403/404, и молча её проглатывать нельзя —
- * достаём поле через unknown и бросаем как все остальные обёртки.
+ * для неё ветку `error` (тип — never). Рантайм при этом отдаёт обычную ошибку
+ * RFC 9457 на 403/404 — `ensureOk` смотрит на `response.ok`, а не на тип.
  */
 export async function deleteWebhook(webhookId: string): Promise<void> {
-  const result = (await client.DELETE('/webhooks/{webhookId}', {
-    params: { path: { webhookId } },
-  })) as unknown as { error?: unknown }
-  if (result.error !== undefined) throw result.error
+  ensureOk(await client.DELETE('/webhooks/{webhookId}', { params: { path: { webhookId } } }))
 }
 
 /**

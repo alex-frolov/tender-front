@@ -3,13 +3,14 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Minus, Plus } from 'lucide-react'
 import { postAuctionBid } from '@/api/endpoints'
 import type { components } from '@/api/schema'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useIdempotentMutation } from '@/hooks/useIdempotentMutation'
 import { apiErrorMessage } from '@/lib/errors'
-import { formatMoney } from '@/lib/money'
+import { formatMoney, parseRublesToMinor } from '@/lib/money'
 import { isAuctionTrade } from './auctionStatus'
-import { bidRules, inputToMinor, minorToInput, validateBid } from './bidRules'
+import { bidRules, minorToInput, validateBid } from './bidRules'
 import { useAuctionParty } from './useAuctionParty'
 
 type AuctionState = components['schemas']['AuctionState']
@@ -64,13 +65,12 @@ export function BidComposer({ auctionId, state }: BidComposerProps) {
       // окажется следующий шаг от новой текущей цены.
       setEdited(false)
       setFormError(null)
-      void queryClient.invalidateQueries({ queryKey: ['auction-bids', auctionId] })
-      void queryClient.invalidateQueries({ queryKey: ['auction-state', auctionId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.auctionBids(auctionId) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.auctionState(auctionId) })
     },
   })
 
-  const parsedMinor = price.trim() === '' ? null : inputToMinor(price)
-  const validMinor = parsedMinor != null && Number.isFinite(parsedMinor) ? parsedMinor : null
+  const validMinor = parseRublesToMinor(price)
 
   /** Сдвиг цены на шаг: −1 вниз (дешевле), +1 вверх, с упором в границы. */
   function adjust(direction: 1 | -1): void {

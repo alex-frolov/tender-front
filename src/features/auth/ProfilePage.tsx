@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { updateMe } from '@/api/auth'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { LOGIN_NOTICE_KEY } from '@/features/auth/LoginPage'
 import { apiErrorMessage, isApiError } from '@/lib/errors'
 import {
@@ -14,16 +14,17 @@ import {
   VERIFICATION_LABELS,
 } from '@/lib/users'
 
-/** Русское сообщение об ошибке смены пароля (в т.ч. неверный текущий пароль). */
+/**
+ * Русское сообщение об ошибке смены пароля (в т.ч. неверный текущий пароль).
+ *
+ * Отдельного кода у неверного текущего пароля нет: это 422 validation_error
+ * (ProfileService), как и короткий новый пароль. Различает их только detail,
+ * поэтому смотрим на него — иначе любая ошибка формы читалась бы как «неверный
+ * текущий пароль».
+ */
 function passwordChangeErrorMessage(err: unknown): string {
-  if (isApiError(err)) {
-    const fieldError = err.errors?.find((item) => item.field === 'current_password')
-    if (fieldError != null) {
-      return fieldError.message || 'Неверный текущий пароль'
-    }
-    if (err.code === 'validation_error' || err.code === 'invalid_credentials') {
-      return 'Неверный текущий пароль'
-    }
+  if (isApiError(err) && err.code === 'validation_error' && /current password/i.test(err.detail ?? '')) {
+    return 'Неверный текущий пароль'
   }
   return apiErrorMessage(err)
 }

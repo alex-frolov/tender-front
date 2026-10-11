@@ -1,23 +1,11 @@
-import { client, unwrap } from './client'
-import type { components, operations } from './schema'
+import { client, ensureOk, unwrap } from './client'
+import type { components } from './schema'
+import type { QueryParams, RequestBody } from './types'
 
 // ---------- Тендеры ----------
 
-export interface TendersQuery {
-  /** Полнотекстовый поиск (title, description, documentation). */
-  q?: string
-  status?: components['schemas']['TenderStatus']
-  region?: string
-  /** Минимальная НМЦК в minor units. */
-  price_min?: number
-  /** Максимальная НМЦК в minor units. */
-  price_max?: number
-  okpd2?: string
-  law_type?: 'fz44' | 'fz223' | 'commercial'
-  access_type?: 'open' | 'contract_holders'
-  cursor?: string
-  limit?: number
-}
+/** Фильтры каталога (GET /tenders): цены — в minor units, как и всё в API. */
+export type TendersQuery = QueryParams<'listTenders'>
 
 /** Список тендеров (курсорная пагинация: { items, next_cursor }). */
 export async function listTenders(query: TendersQuery = {}) {
@@ -202,9 +190,7 @@ export async function deleteLot(tenderId: string, lotId: string): Promise<void> 
   const result = await client.DELETE('/tenders/{tenderId}/lots/{lotId}', {
     params: { path: { tenderId, lotId } },
   })
-  if (result.error !== undefined) {
-    throw result.error
-  }
+  ensureOk(result)
 }
 
 // ---------- Аукционы: список и создание ----------
@@ -340,13 +326,7 @@ export type Company = components['schemas']['Company']
 
 export type CompanyStatus = components['schemas']['CompanyStatus']
 
-export interface CompaniesQuery {
-  /** Подстрока по названию и ИНН. */
-  q?: string
-  status?: CompanyStatus
-  cursor?: string
-  limit?: number
-}
+export type CompaniesQuery = QueryParams<'listCompanies'>
 
 /**
  * Реестр компаний площадки (GET /admin/companies, курсорная пагинация
@@ -386,13 +366,7 @@ export async function getMyCompany(): Promise<Company> {
 }
 
 /** Правка реквизитов своей компании (PATCH /companies, только admin → иначе 403). */
-export async function updateCompany(input: {
-  legal_name?: string
-  kpp?: string
-  ogrn?: string
-  address?: string
-  contacts?: Record<string, unknown>
-}): Promise<Company> {
+export async function updateCompany(input: RequestBody<'updateCompany'>): Promise<Company> {
   const result = await client.PATCH('/companies', { body: input })
   return unwrap(result)
 }
@@ -454,13 +428,8 @@ export async function updateSupplierProfile(
 export type Contract = components['schemas']['Contract']
 export type ContractStatus = components['schemas']['ContractStatus']
 
-export interface ContractsQuery {
-  cursor?: string
-  limit?: number
-  contract_status?: ContractStatus
-  /** Только договоры, привязанные к процедуре (contract_tenders.tender_id). */
-  tender_id?: string
-}
+/** `tender_id` — только договоры, привязанные к процедуре (contract_tenders.tender_id). */
+export type ContractsQuery = QueryParams<'listContracts'>
 
 /** Список контрактов (GET /contracts, курсорная пагинация { items, next_cursor }). */
 export async function listContracts(query: ContractsQuery = {}) {
@@ -518,11 +487,9 @@ export async function listContractTypes(): Promise<ContractType[]> {
 }
 
 /** Новый тип договора (POST /contract-types, только суперадмин площадки). */
-export async function createContractType(input: {
-  code: string
-  name: string
-  is_single_use?: boolean
-}): Promise<ContractType> {
+export async function createContractType(
+  input: RequestBody<'createContractType'>,
+): Promise<ContractType> {
   const result = await client.POST('/contract-types', { body: input })
   return unwrap(result)
 }
@@ -546,13 +513,7 @@ export async function createContract(input: ContractCreate): Promise<Contract> {
  */
 export async function bindTenderToContract(
   contractId: string,
-  input: {
-    tender_id: string
-    lot_id?: string
-    award_id?: string
-    price_net_minor: number
-    vat_rate?: number
-  },
+  input: RequestBody<'bindTenderToContract'>,
 ): Promise<ContractTender> {
   const result = await client.POST('/contracts/{contractId}/tenders', {
     params: { path: { contractId } },
@@ -568,7 +529,7 @@ export async function bindTenderToContract(
  */
 export async function createContractStage(
   contractTenderId: string,
-  input: { title: string; number?: number; amount_minor?: number; due_at?: string },
+  input: RequestBody<'createContractStage'>,
 ): Promise<ContractStage> {
   const result = await client.POST('/contract_tenders/{contractTenderId}/stages', {
     params: { path: { contractTenderId } },
@@ -589,16 +550,9 @@ export type SecurityKind = NonNullable<Security['kind']>
 export type ClaimStage = NonNullable<Claim['stage']>
 
 /** Исход разбирательства по претензии. */
-export type ClaimOutcome = NonNullable<
-  NonNullable<operations['resolveClaim']['requestBody']>['content']['application/json']['outcome']
->
+export type ClaimOutcome = NonNullable<RequestBody<'resolveClaim'>['outcome']>
 
-export interface ClaimsQuery {
-  contract_id?: string
-  status?: ClaimStatus
-  cursor?: string
-  limit?: number
-}
+export type ClaimsQuery = QueryParams<'listClaims'>
 
 /**
  * Претензии компании (GET /claims): и как заказчика, и как исполнителя —
@@ -615,13 +569,7 @@ export async function listClaims(query: ClaimsQuery = {}) {
  * переходит в статус «Претензия». Стадия должна совпадать с текущей стадией
  * исполнения (approve / in_work / done_by_performer), иначе 409.
  */
-export async function createClaim(input: {
-  contract_id: string
-  stage: ClaimStage
-  reason: string
-  description?: string
-  amount_minor: number
-}): Promise<Claim> {
+export async function createClaim(input: RequestBody<'createClaim'>): Promise<Claim> {
   const result = await client.POST('/claims', { body: input })
   return unwrap(result)
 }
@@ -643,12 +591,7 @@ export async function resolveClaim(
   return unwrap(result)
 }
 
-export interface SecuritiesQuery {
-  kind?: SecurityKind
-  status?: SecurityStatus
-  cursor?: string
-  limit?: number
-}
+export type SecuritiesQuery = QueryParams<'listSecurities'>
 
 /**
  * Обеспечение компании (GET /securities): по своим процедурам (как заказчик)
@@ -714,7 +657,5 @@ export async function deleteNotificationSubscription(subscriptionId: string): Pr
   const result = await client.DELETE('/notifications/subscriptions', {
     params: { query: { subscriptionId } },
   })
-  if (result.error !== undefined) {
-    throw result.error
-  }
+  ensureOk(result)
 }

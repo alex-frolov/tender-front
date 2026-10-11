@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Gavel, FileText } from 'lucide-react'
 import { getDashboard, type DashboardPeriod, type Deadline } from '@/api/analytics'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage, isApiError } from '@/lib/errors'
 import { formatDateTime, formatRemaining } from '@/lib/format'
 import { TenderStatsCard } from './TenderStatsCard'
@@ -101,7 +102,7 @@ export function DashboardPage() {
   const [period, setPeriod] = useState<DashboardPeriod>('week')
 
   const dashboardQuery = useQuery({
-    queryKey: ['dashboard', period],
+    queryKey: queryKeys.dashboard(period),
     queryFn: () => getDashboard(period),
   })
 

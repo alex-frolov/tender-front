@@ -1,11 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Star } from 'lucide-react'
 import { addFavorite, listFavorites, removeFavorite } from '@/api/engagement'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-
-/** Ключ кэша избранного: список общий для всех экранов. */
-const FAVORITES_QUERY_KEY = ['favorites'] as const
 
 /**
  * Звёздочка «в избранном» для тендера или лота (POST/DELETE /favorites).
@@ -29,7 +27,7 @@ export function FavoriteToggle({
   const queryClient = useQueryClient()
 
   const favoritesQuery = useQuery({
-    queryKey: FAVORITES_QUERY_KEY,
+    queryKey: queryKeys.favorites,
     queryFn: listFavorites,
     staleTime: 60_000,
   })
@@ -39,7 +37,7 @@ export function FavoriteToggle({
   )
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: FAVORITES_QUERY_KEY })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.favorites })
   }
 
   const addMutation = useMutation({

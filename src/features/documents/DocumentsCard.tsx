@@ -9,6 +9,7 @@ import {
   type DocumentEntityType,
   type DocumentVisibility,
 } from '@/api/documents'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -88,13 +89,13 @@ export function DocumentsCard({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const documentsQuery = useQuery({
-    queryKey: ['documents', entityType, entityId],
+    queryKey: queryKeys.documents(entityType, entityId),
     queryFn: () => listDocuments(entityType, entityId),
     enabled: entityId !== '',
   })
 
   const typesQuery = useQuery({
-    queryKey: ['document-types'],
+    queryKey: queryKeys.documentTypes,
     queryFn: listDocumentTypes,
     staleTime: 5 * 60_000,
     enabled: canUpload,
@@ -107,7 +108,7 @@ export function DocumentsCard({
   const uploadMutation = useMutation({
     mutationFn: uploadDocument,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['documents', entityType, entityId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.documents(entityType, entityId) })
     },
   })
 

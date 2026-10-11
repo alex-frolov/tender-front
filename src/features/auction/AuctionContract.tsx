@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { FileSignature } from 'lucide-react'
 import { listContracts } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,7 +56,7 @@ export function AuctionContract({
   const active = status != null && EXECUTION_STATUSES.includes(status)
 
   const contractsQuery = useQuery({
-    queryKey: ['contracts', 'tender', tenderId],
+    queryKey: queryKeys.contracts.byTender(tenderId),
     queryFn: () => listContracts({ tender_id: tenderId ?? '' }),
     enabled: active && tenderId != null,
   })

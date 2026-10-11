@@ -7,6 +7,7 @@ import {
   removeSavedSearch,
   type DigestPeriod,
 } from '@/api/engagement'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -50,13 +51,13 @@ export function SavedSearches({
   const [error, setError] = useState<string | null>(null)
 
   const searchesQuery = useQuery({
-    queryKey: ['saved-searches'],
+    queryKey: queryKeys.savedSearches,
     queryFn: listSavedSearches,
     staleTime: 60_000,
   })
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['saved-searches'] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.savedSearches })
   }
 
   const createMutation = useMutation({ mutationFn: createSavedSearch, onSuccess: invalidate })

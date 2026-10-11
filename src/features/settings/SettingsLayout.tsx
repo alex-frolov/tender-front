@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { cn } from '@/lib/utils'
 import { visibleSettingsTabs } from './settingsAccess'
 

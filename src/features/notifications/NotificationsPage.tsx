@@ -7,6 +7,7 @@ import {
   listNotificationSubscriptions,
   toggleNotificationSubscription,
 } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,7 +29,7 @@ import {
 } from '@/components/ui/table'
 import { apiErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import {
   NOTIFICATION_CHANNEL_DELIVERED,
   NOTIFICATION_CHANNEL_LABELS,
@@ -60,12 +61,12 @@ export function NotificationsPage() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   const subscriptionsQuery = useQuery({
-    queryKey: ['notification-subscriptions'],
+    queryKey: queryKeys.notificationSubscriptions,
     queryFn: listNotificationSubscriptions,
   })
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['notification-subscriptions'] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.notificationSubscriptions })
   }
 
   const createMutation = useMutation({

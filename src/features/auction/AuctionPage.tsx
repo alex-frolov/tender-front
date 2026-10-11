@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { getAuctionBids, getAuctionState } from '@/api/endpoints'
 import type { components } from '@/api/schema'
+import { queryKeys } from '@/api/queryKeys'
 import { FullPageSpinner } from '@/components/auth/ProtectedRoute'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import {
   useAuctionStream,
   type AuctionLiveSnapshot,
@@ -137,13 +138,13 @@ export function AuctionPage() {
   const { user } = useAuth()
 
   const stateQuery = useQuery({
-    queryKey: ['auction-state', auctionId],
+    queryKey: queryKeys.auctionState(auctionId),
     queryFn: () => getAuctionState(auctionId ?? ''),
     enabled: auctionId != null,
   })
 
   const bidsQuery = useQuery({
-    queryKey: ['auction-bids', auctionId],
+    queryKey: queryKeys.auctionBids(auctionId),
     queryFn: () => getAuctionBids(auctionId ?? ''),
     enabled: auctionId != null,
   })
@@ -171,7 +172,7 @@ export function AuctionPage() {
       // Саму ставку снапшот не несёт (только id/цену/время последней), поэтому
       // историю досматриваем запросом — иначе таблица отстаёт от торгов.
       if (event === 'bid') {
-        void queryClient.invalidateQueries({ queryKey: ['auction-bids', auctionId] })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.auctionBids(auctionId) })
       }
     },
   })

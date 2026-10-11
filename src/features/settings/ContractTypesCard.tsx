@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createContractType, listContractTypes } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,7 +36,7 @@ const SCOPE_LABELS: Record<(typeof SCOPES)[number], string> = {
 export function ContractTypesCard() {
   const queryClient = useQueryClient()
   const typesQuery = useQuery({
-    queryKey: ['contract-types'],
+    queryKey: queryKeys.contractTypes,
     queryFn: listContractTypes,
     staleTime: 5 * 60_000,
   })
@@ -49,7 +50,7 @@ export function ContractTypesCard() {
   const mutation = useMutation({
     mutationFn: createContractType,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['contract-types'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.contractTypes })
     },
   })
 

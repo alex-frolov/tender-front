@@ -9,6 +9,7 @@ import {
   type Contract,
   type ContractsQuery,
 } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { useCompanyQuery } from '@/features/company/useCompany'
 import { ContractClaims } from './ContractClaims'
 import { ContractCreateForm } from './ContractCreateForm'
@@ -102,13 +103,13 @@ function ContractCard({ contractId, onClose }: { contractId: string; onClose: ()
   const [actionError, setActionError] = useState<string | null>(null)
 
   const contractQuery = useQuery({
-    queryKey: ['contract', contractId],
+    queryKey: queryKeys.contract(contractId),
     queryFn: () => getContract(contractId),
   })
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['contract', contractId] })
-    void queryClient.invalidateQueries({ queryKey: ['contracts'] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.contract(contractId) })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all })
   }
 
   const sendMutation = useMutation({
@@ -329,7 +330,7 @@ export function ContractsPage() {
   )
 
   const firstPageQuery = useQuery({
-    queryKey: ['contracts', statusFilter, null],
+    queryKey: queryKeys.contracts.page(statusFilter, null),
     queryFn: () => listContracts(apiQuery),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
@@ -362,7 +363,7 @@ export function ContractsPage() {
 
   function fetchNextPage(cursor: string | null): Promise<CursorPageData<Contract>> {
     return queryClient.fetchQuery({
-      queryKey: ['contracts', statusFilter, cursor],
+      queryKey: queryKeys.contracts.page(statusFilter, cursor),
       queryFn: () => listContracts(cursor == null ? apiQuery : { ...apiQuery, cursor }),
     })
   }

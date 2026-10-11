@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { FileSignature } from 'lucide-react'
 import { uploadContractScan } from '@/api/documents'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { DocumentsCard } from '@/features/documents/DocumentsCard'
 import { apiErrorMessage } from '@/lib/errors'
@@ -28,8 +29,8 @@ export function ContractDocuments({
   const scanMutation = useMutation({
     mutationFn: (file: File) => uploadContractScan(contractId, file),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['documents', 'contract', contractId] })
-      void queryClient.invalidateQueries({ queryKey: ['contract', contractId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.documents('contract', contractId) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.contract(contractId) })
     },
   })
 

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { MessageSquare } from 'lucide-react'
 import { answerQuestion, askQuestion, listQuestions } from '@/api/engagement'
 import type { components } from '@/api/schema'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { apiErrorMessage, isApiError } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { isTenderCustomer } from '@/lib/tenderAccess'
@@ -47,7 +48,7 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
   const isCustomer = isTenderCustomer(tender, user)
 
   const questionsQuery = useQuery({
-    queryKey: ['questions', tenderId],
+    queryKey: queryKeys.questions(tenderId),
     queryFn: () => listQuestions(tenderId),
     enabled: tenderId !== '',
   })
@@ -62,14 +63,14 @@ export function TenderQuestions({ tender }: { tender: Tender }) {
   const askMutation = useMutation({
     mutationFn: (input: { text: string; lot_id?: string }) => askQuestion(tenderId, input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['questions', tenderId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.questions(tenderId) })
     },
   })
   const answerMutation = useMutation({
     mutationFn: ({ questionId, answer }: { questionId: string; answer: string }) =>
       answerQuestion(tenderId, questionId, answer),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['questions', tenderId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.questions(tenderId) })
     },
   })
 

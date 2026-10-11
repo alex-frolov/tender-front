@@ -5,6 +5,10 @@ import {
   type UseMutationOptions,
   type UseMutationResult,
 } from '@tanstack/react-query'
+import { isRetryableError } from '@/lib/errors'
+
+/** Повторы после первой неудачи: сеть и 5xx, с тем же ключом. */
+const MAX_IDEMPOTENT_RETRIES = 2
 
 /**
  * Обёртка над useMutation, которая автоматически генерирует Idempotency-Key
@@ -14,12 +18,12 @@ import {
  * а повторы mutationFn (retry React Query) переиспользуют тот же ключ.
  * Поэтому повторная отправка той же ставки (двойной клик / retry) не создаёт
  * дублей: API возвращает тот же результат (см. спеку, Idempotency-Key).
+ *
+ * Ради этого ретрай здесь включён по умолчанию — в отличие от остальных
+ * мутаций (lib/queryClient.ts): ставка, отправленная в момент обрыва связи,
+ * уходит повторно, а не теряется. 4xx не повторяются — это ответ по существу.
  */
-export function useIdempotentMutation<
-  TData,
-  TError,
-  TVariables,
->(
+export function useIdempotentMutation<TData, TError, TVariables>(
   options: Omit<UseMutationOptions<TData, TError, TVariables>, 'mutationFn'> & {
     mutationFn: (variables: TVariables, idempotencyKey: string) => Promise<TData>
   },
@@ -28,36 +32,29 @@ export function useIdempotentMutation<
   const { mutationFn, ...rest } = options
 
   const mutation = useMutation({
+    retry: (failureCount, error) =>
+      failureCount < MAX_IDEMPOTENT_RETRIES && isRetryableError(error),
     ...rest,
     mutationFn: (variables) => mutationFn(variables, idempotencyKeyRef.current),
   })
+  const { mutate: baseMutate, mutateAsync: baseMutateAsync } = mutation
 
   const mutate = useCallback(
-    (
-      variables: TVariables,
-      mutateOptions?: MutateOptions<TData, TError, TVariables>,
-    ) => {
+    (variables: TVariables, mutateOptions?: MutateOptions<TData, TError, TVariables>) => {
       // Новый ключ на каждое пользовательское действие; retry его переиспользует.
       idempotencyKeyRef.current = crypto.randomUUID()
-      return mutation.mutate(variables, mutateOptions)
+      baseMutate(variables, mutateOptions)
     },
-    [mutation.mutate],
+    [baseMutate],
   )
 
   const mutateAsync = useCallback(
-    async (
-      variables: TVariables,
-      mutateOptions?: MutateOptions<TData, TError, TVariables>,
-    ) => {
+    (variables: TVariables, mutateOptions?: MutateOptions<TData, TError, TVariables>) => {
       idempotencyKeyRef.current = crypto.randomUUID()
-      return mutation.mutateAsync(variables, mutateOptions)
+      return baseMutateAsync(variables, mutateOptions)
     },
-    [mutation.mutateAsync],
+    [baseMutateAsync],
   )
 
-  return {
-    ...mutation,
-    mutate,
-    mutateAsync,
-  }
+  return { ...mutation, mutate, mutateAsync }
 }

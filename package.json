@@ -1,5 +1,5 @@
 {
-  "name": "tf-vite-scaffold",
+  "name": "tender-front",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview",
     "sync:openapi": "curl -fsSL http://127.0.0.1:8080/openapi.yaml -o src/api/openapi.yaml",
     "gen:types": "openapi-typescript src/api/openapi.yaml -o src/api/schema.d.ts",
@@ -36,6 +38,7 @@
     "openapi-typescript": "^7.13.0",
     "oxlint": "^1.75.0",
     "typescript": "~6.0.2",
-    "vite": "^8.2.0"
+    "vite": "^8.2.0",
+    "vitest": "^5.0.3"
   }
 }

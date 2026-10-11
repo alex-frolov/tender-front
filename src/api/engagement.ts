@@ -1,4 +1,4 @@
-import { client, unwrap } from './client'
+import { client, ensureOk, unwrap } from './client'
 import type { components, operations } from './schema'
 
 // ---------- Вопросы по тендеру ----------
@@ -89,9 +89,7 @@ export async function removeFavorite(favoriteId: string): Promise<void> {
   const result = await client.DELETE('/favorites', {
     params: { query: { favoriteId } },
   })
-  if (result.error !== undefined) {
-    throw result.error
-  }
+  ensureOk(result)
 }
 
 // ---------- Сохранённые поиски ----------
@@ -129,7 +127,5 @@ export async function removeSavedSearch(savedSearchId: string): Promise<void> {
   const result = await client.DELETE('/saved-searches', {
     params: { query: { savedSearchId } },
   })
-  if (result.error !== undefined) {
-    throw result.error
-  }
+  ensureOk(result)
 }

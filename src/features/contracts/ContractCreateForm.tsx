@@ -7,6 +7,7 @@ import {
   type ContractScope,
   type ContractSource,
 } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -21,16 +22,10 @@ import { CompanyPicker } from '@/features/company/CompanyPicker'
 import { useCompanyQuery } from '@/features/company/useCompany'
 import { CONTRACT_SCOPE_LABELS, CONTRACT_SOURCE_LABELS } from '@/lib/contracts'
 import { apiErrorMessage } from '@/lib/errors'
+import { parseRublesToMinor } from '@/lib/money'
 
 const SOURCES: readonly ContractSource[] = ['tender', 'external']
 const SCOPES: readonly ContractScope[] = ['single_use', 'multi_use']
-
-/** Рубли из формы → minor units; пустая строка — поле не передаём. */
-function toMinor(value: string): number | null {
-  if (value.trim() === '') return null
-  const parsed = Number(value.replace(',', '.'))
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : null
-}
 
 /**
  * Создание договора (POST /contracts).
@@ -53,7 +48,7 @@ export function ContractCreateForm({
   const queryClient = useQueryClient()
   const companyQuery = useCompanyQuery()
   const typesQuery = useQuery({
-    queryKey: ['contract-types'],
+    queryKey: queryKeys.contractTypes,
     queryFn: listContractTypes,
     staleTime: 5 * 60_000,
   })
@@ -72,7 +67,7 @@ export function ContractCreateForm({
   const mutation = useMutation({
     mutationFn: createContract,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['contracts'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all })
     },
   })
 
@@ -109,7 +104,7 @@ export function ContractCreateForm({
     }
     if (source === 'tender') input.tender_id = tenderId.trim()
 
-    const priceMinor = toMinor(price)
+    const priceMinor = parseRublesToMinor(price)
     if (priceMinor != null) input.price_net_minor = priceMinor
 
     const vat = vatRate.trim() === '' ? null : Number(vatRate.replace(',', '.'))

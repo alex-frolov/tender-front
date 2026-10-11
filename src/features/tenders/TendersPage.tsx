@@ -4,11 +4,12 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { Plus } from 'lucide-react'
 import { listTenders, type TendersQuery } from '@/api/endpoints'
 import type { components } from '@/api/schema'
+import { queryKeys } from '@/api/queryKeys'
 import { TenderStatusBadge } from '@/components/tender/TenderStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { CompanyGateBanner } from '@/features/company/CompanyGateBanner'
 import { companyGateHint, useCompanyGate } from '@/features/company/useCompanyGate'
 import {
@@ -43,7 +44,7 @@ import {
   type TenderStatus,
 } from '@/lib/enums'
 import { formatDateTime, formatRemaining, plural } from '@/lib/format'
-import { formatMoney } from '@/lib/money'
+import { formatMoney, parseRublesToMinor } from '@/lib/money'
 
 type TenderListItem = components['schemas']['TenderListItem']
 
@@ -111,10 +112,10 @@ function filtersToQuery(filters: TenderFilters): TendersQuery {
   if (isLawType(filters.law_type)) query.law_type = filters.law_type
   const region = filters.region.trim()
   if (region !== '') query.region = region
-  const priceMin = Number(filters.price_min)
-  const priceMax = Number(filters.price_max)
-  if (Number.isFinite(priceMin) && priceMin > 0) query.price_min = Math.round(priceMin * 100)
-  if (Number.isFinite(priceMax) && priceMax > 0) query.price_max = Math.round(priceMax * 100)
+  const priceMin = parseRublesToMinor(filters.price_min)
+  const priceMax = parseRublesToMinor(filters.price_max)
+  if (priceMin != null && priceMin > 0) query.price_min = priceMin
+  if (priceMax != null && priceMax > 0) query.price_max = priceMax
   if (isAccessType(filters.access_type)) query.access_type = filters.access_type
   return query
 }
@@ -201,7 +202,7 @@ export function TendersPage() {
   }, [searchParams])
 
   const firstPageQuery = useQuery({
-    queryKey: ['tenders', filters, null],
+    queryKey: queryKeys.tenders.page(filters, null),
     queryFn: () => listTenders(apiQuery),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
@@ -247,7 +248,7 @@ export function TendersPage() {
   /** Догрузка следующей страницы по курсору (кэшируется в TanStack Query). */
   function fetchNextPage(cursor: string | null): Promise<CursorPageData<TenderListItem>> {
     return queryClient.fetchQuery({
-      queryKey: ['tenders', filters, cursor],
+      queryKey: queryKeys.tenders.page(filters, cursor),
       queryFn: () => listTenders(cursor == null ? apiQuery : { ...apiQuery, cursor }),
     })
   }

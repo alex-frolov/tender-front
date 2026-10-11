@@ -1,4 +1,4 @@
-import { client, unwrap } from './client'
+import { client, filenameFromResponse, unwrap } from './client'
 import type { operations } from './schema'
 
 /** Задача экспорта (GET /exports/{jobId}). */
@@ -37,13 +37,6 @@ export async function getExport(jobId: string): Promise<ExportJob> {
   return unwrap(result)
 }
 
-/** Имя файла из Content-Disposition; null, если заголовка нет. */
-function filenameFromDisposition(header: string | null): string | null {
-  if (header == null) return null
-  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(header)
-  return match?.[1] != null ? decodeURIComponent(match[1]) : null
-}
-
 /**
  * Скачивание готового файла (GET /exports/{jobId}/download).
  *
@@ -66,6 +59,6 @@ export async function downloadExport(
 
   return {
     blob,
-    filename: filenameFromDisposition(result.response.headers.get('content-disposition')),
+    filename: filenameFromResponse(result.response),
   }
 }

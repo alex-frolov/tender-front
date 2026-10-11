@@ -1,14 +1,8 @@
 import createClient from 'openapi-fetch'
 import type { paths } from './schema'
-import type { components } from './schema'
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '@/lib/auth-store'
 import { emitSessionExpired } from '@/lib/authEvents'
-
-/**
- * Базовый URL API. В dev указывает на локальный API (или задеплоенный через
- * VITE_API_BASE), в проде — на проксируемый nginx-путь /api/v1.
- */
-const envBase = import.meta.env.VITE_API_BASE as string | undefined
+import { NetworkError, toApiError } from '@/lib/errors'
 
 /**
  * Базовый URL API.
@@ -17,31 +11,50 @@ const envBase = import.meta.env.VITE_API_BASE as string | undefined
  * - В прод/демо: VITE_API_BASE указывает на деплой (напр. https://api.example.com/api/v1)
  *   либо фронт за nginx-прокси — тогда оставляем /api/v1 по умолчанию.
  */
-export const API_BASE: string = envBase ?? '/api/v1'
+export const API_BASE: string = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api/v1'
 
-type ApiError = components['schemas']['Error']
+/**
+ * fetch, который отличает «ответа нет» от программной ошибки: сам fetch в обоих
+ * случаях бросает TypeError. Отмену запроса (AbortController React Query)
+ * пробрасываем как есть — это не сбой.
+ */
+async function fetchOrNetworkError(request: Request): Promise<Response> {
+  try {
+    return await globalThis.fetch(request)
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    throw new NetworkError(error)
+  }
+}
 
 /**
  * Единственный инстанс типизированного клиента с auth-middleware:
  * автоподстановка Bearer-токена, single-flight refresh при 401, ретрай запроса.
  */
-export const client = createClient<paths>({
-  baseUrl: API_BASE,
-})
+export const client = createClient<paths>({ baseUrl: API_BASE, fetch: fetchOrNetworkError })
 
 /**
  * «Голый» клиент БЕЗ auth-middleware — только для token-эндпоинтов
  * (/auth/token, /auth/refresh, /auth/logout, /auth/register). Иначе refresh-флоу
  * зацикливался бы сам на себе (refresh при 401 на самом refresh).
  */
-export const authClient = createClient<paths>({
-  baseUrl: API_BASE,
-})
+export const authClient = createClient<paths>({ baseUrl: API_BASE, fetch: fetchOrNetworkError })
 
-/** Распаковка результата openapi-fetch: возвращаем data или бросаем error (RFC 9457). */
-export async function unwrap<TData>(result: { data?: TData; error?: unknown }): Promise<TData> {
-  if (result.error !== undefined) {
-    throw result.error as ApiError
+interface FetchResult<TData> {
+  data?: TData
+  error?: unknown
+  response: Response
+}
+
+/**
+ * Распаковка результата openapi-fetch: data или `ApiError` со статусом ответа.
+ *
+ * Проверяем и `response.ok`: на не-2xx ответ с пустым телом openapi-fetch
+ * возвращает `error: undefined`, и такой отказ иначе выглядел бы успехом.
+ */
+export async function unwrap<TData>(result: FetchResult<TData>): Promise<TData> {
+  if (result.error !== undefined || !result.response.ok) {
+    throw toApiError(result.error, result.response)
   }
   if (result.data === undefined) {
     throw new Error('API вернул пустой ответ без данных')
@@ -49,13 +62,33 @@ export async function unwrap<TData>(result: { data?: TData; error?: unknown }): 
   return result.data
 }
 
-// ---------- Refresh: single-flight очередь ----------
+/** Проверка ответа без тела (204/202): бросает `ApiError`, если запрос не удался. */
+export function ensureOk(result: { error?: unknown; response: Response }): void {
+  if (result.error !== undefined || !result.response.ok) {
+    throw toApiError(result.error, result.response)
+  }
+}
 
-type RefreshOutcome = 'ok' | 'auth-failed' | 'network-failed'
+/**
+ * Имя файла из Content-Disposition ответа (скачивание документа, экспорта);
+ * null, если заголовка нет. `filename*=UTF-8''…` декодируется.
+ */
+export function filenameFromResponse(response: Response): string | null {
+  const header = response.headers.get('content-disposition')
+  if (header == null) return null
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(header)
+  return match?.[1] != null ? decodeURIComponent(match[1]) : null
+}
+
+// ---------- Refresh: один на вкладку и по очереди между вкладками ----------
+
+export type RefreshOutcome = 'ok' | 'auth-failed' | 'network-failed'
 
 let refreshInFlight: Promise<RefreshOutcome> | null = null
 
 async function doRefresh(): Promise<RefreshOutcome> {
+  // Читаем внутри замка: пока ждали, соседняя вкладка могла ротировать пару,
+  // и старый refresh уже отозван.
   const refreshToken = getRefreshToken()
   if (refreshToken == null) {
     return 'auth-failed'
@@ -64,8 +97,8 @@ async function doRefresh(): Promise<RefreshOutcome> {
     const result = await authClient.POST('/auth/refresh', {
       body: { refresh_token: refreshToken },
     })
-    if (result.error) {
-      // HTTP-ошибка (обычно 401 — refresh протух) → сессия мертва.
+    if (result.error !== undefined || !result.response.ok) {
+      // HTTP-ошибка (обычно 401 — refresh протух или отозван) → сессия мертва.
       return 'auth-failed'
     }
     const data = result.data
@@ -84,12 +117,26 @@ async function doRefresh(): Promise<RefreshOutcome> {
   }
 }
 
+/** Межвкладочный замок (Web Locks API); без поддержки — просто вызов. */
+function withRefreshLock(fn: () => Promise<RefreshOutcome>): Promise<RefreshOutcome> {
+  if (typeof navigator !== 'undefined' && 'locks' in navigator) {
+    return navigator.locks.request('tp.refresh', fn)
+  }
+  return fn()
+}
+
 /**
- * Single-flight refresh: несколько параллельных 401 ждут один общий
- * POST /auth/refresh, после чего все retry-запросы получают новый access-токен.
+ * Обновление пары токенов — единственная точка входа для refresh.
+ *
+ * Бэкенд ротирует refresh-токен и отзывает использованный: повторный
+ * `POST /auth/refresh` со старым токеном отвечает 401. Поэтому параллельные
+ * вызовы внутри вкладки ждут один общий запрос (single-flight), а между
+ * вкладками запросы идут по очереди под Web Lock. Без этого второй вызов
+ * (StrictMode запускает bootstrap дважды, две вкладки перезагружаются разом)
+ * получал 401 и стирал только что выданную пару.
  */
-function singleFlightRefresh(): Promise<RefreshOutcome> {
-  refreshInFlight ??= doRefresh().finally(() => {
+export function refreshTokens(): Promise<RefreshOutcome> {
+  refreshInFlight ??= withRefreshLock(doRefresh).finally(() => {
     refreshInFlight = null
   })
   return refreshInFlight
@@ -113,8 +160,8 @@ interface PendingRequest {
 /** Неотправленные клоны запросов по id (нужны для retry). */
 const pendingByRequestId = new Map<string, PendingRequest>()
 
-const authMiddleware = {
-  onRequest({ request, schemaPath, id }: { request: Request; schemaPath: string; id: string }) {
+client.use({
+  onRequest({ request, schemaPath, id }) {
     if (AUTH_ENDPOINTS.includes(schemaPath)) {
       return request
     }
@@ -127,14 +174,14 @@ const authMiddleware = {
     return request
   },
 
-  async onResponse({ response, id }: { response: Response; id: string }) {
+  async onResponse({ response, id }) {
     const pending = pendingByRequestId.get(id)
     pendingByRequestId.delete(id)
     if (response.status !== 401 || pending?.hadAuth !== true) {
       return undefined
     }
 
-    const outcome = await singleFlightRefresh()
+    const outcome = await refreshTokens()
     if (outcome !== 'ok') {
       if (outcome === 'auth-failed') {
         // Refresh протух/отозван — сессию не восстановить, чистим и уходим на логин.
@@ -147,14 +194,11 @@ const authMiddleware = {
     // Refresh удался: повторяем исходный запрос с новым access-токеном.
     const headers = new Headers(pending.request.headers)
     headers.set('Authorization', `Bearer ${getAccessToken()}`)
-    const retry = new Request(pending.request, { headers })
-    return fetch(retry)
+    return fetchOrNetworkError(new Request(pending.request, { headers }))
   },
 
-  onError({ id }: { id: string }) {
+  onError({ id }) {
     // Сетевая ошибка: ответа не будет, чистим клон запроса, чтобы не копить память.
     pendingByRequestId.delete(id)
   },
-}
-
-client.use(authMiddleware)
+})

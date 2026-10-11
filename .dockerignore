@@ -1,0 +1,14 @@
+# Контекст сборки образа. node_modules хоста в образ не копируем: в нём нативные
+# бинарники под ОС хоста (rolldown, oxlint), а `COPY . .` в web.Dockerfile
+# затёр бы ими зависимости, установленные `npm ci` внутри контейнера.
+node_modules
+dist
+.git
+.github
+.idea
+.claude
+.env
+.env.*
+!.env.example
+src/api/openapi.yaml
+*.log

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getUsage, type UsagePeriod } from '@/api/platform'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -42,7 +43,7 @@ export function CompanyUsageCard() {
   const [period, setPeriod] = useState<UsagePeriod>('day')
 
   const usageQuery = useQuery({
-    queryKey: ['usage', period],
+    queryKey: queryKeys.usage(period),
     queryFn: () => getUsage(period),
     staleTime: 60_000,
   })

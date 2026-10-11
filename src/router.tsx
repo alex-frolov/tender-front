@@ -1,30 +1,7 @@
+import type { ComponentType } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { GuestRoute, ProtectedRoute } from '@/components/auth/ProtectedRoute'
-import { LoginPage } from '@/features/auth/LoginPage'
-import { RegisterPage } from '@/features/auth/RegisterPage'
-import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
-import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
-import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
-import { ProfilePage } from '@/features/auth/ProfilePage'
-import { TwoFactorSecurityPage } from '@/features/auth/TwoFactorSecurityPage'
-import { UsersPage } from '@/features/users/UsersPage'
-import { TendersPage } from '@/features/tenders/TendersPage'
-import { TenderDetailPage } from '@/features/tenders/TenderDetailPage'
-import { TenderCreatePage } from '@/features/tenders/TenderCreatePage'
-import { AuctionPage } from '@/features/auction/AuctionPage'
-import { AuctionsPage } from '@/features/auction/AuctionsPage'
-import { ContractsPage } from '@/features/contracts/ContractsPage'
-import { DashboardPage } from '@/features/dashboard/DashboardPage'
-import { ProcurementPlansPage } from '@/features/planning/ProcurementPlansPage'
-import { CompaniesAdminPage } from '@/features/company/CompaniesAdminPage'
-import { MyCompanyPage } from '@/features/company/MyCompanyPage'
-import { NotificationsPage } from '@/features/notifications/NotificationsPage'
-import { SettingsLayout } from '@/features/settings/SettingsLayout'
-import { ApiKeysPage } from '@/features/settings/ApiKeysPage'
-import { WebhooksPage } from '@/features/settings/WebhooksPage'
-import { PlatformSettingsPage } from '@/features/settings/PlatformSettingsPage'
-import { RolePermissionsPage } from '@/features/settings/RolePermissionsPage'
+import { FullPageSpinner, GuestRoute, ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 /**
  * Маршруты приложения. Этап 1.2:
@@ -35,63 +12,140 @@ import { RolePermissionsPage } from '@/features/settings/RolePermissionsPage'
  *   /admin/companies, /notifications, /profile, /settings/*, /users —
  *   под ProtectedRoute (без сессии → /login с state.from).
  *
+ * Страницы подключаются лениво (`lazy`): каждая — отдельный чанк, в начальный
+ * бандл входят только каркас (AppLayout) и охрана роутов. До этого всё
+ * приложение уходило одним файлом ~780 КБ.
+ *
  * /settings — раздел с вкладками (SettingsLayout): безопасность и API-ключи
  * доступны всем ролям, webhooks — администраторам, площадка и права ролей —
  * суперадмину. Видимость вкладки не заменяет проверку прав: страницы
  * обрабатывают 403 и при прямом заходе по URL.
  */
+/** Ленивая страница: модуль `load()` экспортирует компонент под именем `name`. */
+function page<Name extends string>(
+  load: () => Promise<Record<Name, ComponentType>>,
+  name: Name,
+): () => Promise<{ Component: ComponentType }> {
+  return async () => ({ Component: (await load())[name] })
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppLayout />,
+    // Первая загрузка ленивой страницы: пока чанк в пути, показываем спиннер.
+    HydrateFallback: FullPageSpinner,
     children: [
       {
         element: <GuestRoute />,
         children: [
-          { path: 'login', element: <LoginPage /> },
-          { path: 'register', element: <RegisterPage /> },
+          { path: 'login', lazy: page(() => import('@/features/auth/LoginPage'), 'LoginPage') },
+          {
+            path: 'register',
+            lazy: page(() => import('@/features/auth/RegisterPage'), 'RegisterPage'),
+          },
         ],
       },
       // Публичные роуты (вне GuestRoute): пользователь может прийти по ссылке из
       // письма как залогиненным, так и нет.
-      { path: 'verify-email', element: <VerifyEmailPage /> },
-      { path: 'forgot-password', element: <ForgotPasswordPage /> },
-      { path: 'reset-password', element: <ResetPasswordPage /> },
+      {
+        path: 'verify-email',
+        lazy: page(() => import('@/features/auth/VerifyEmailPage'), 'VerifyEmailPage'),
+      },
+      {
+        path: 'forgot-password',
+        lazy: page(() => import('@/features/auth/ForgotPasswordPage'), 'ForgotPasswordPage'),
+      },
+      {
+        path: 'reset-password',
+        lazy: page(() => import('@/features/auth/ResetPasswordPage'), 'ResetPasswordPage'),
+      },
       {
         element: <ProtectedRoute />,
         children: [
           // Корень — обзор компании (раньше редиректил на список тендеров).
           // Внутри ProtectedRoute: дашборд считается по компании актора,
           // гостю показывать нечего.
-          { index: true, element: <DashboardPage /> },
-          { path: 'tenders', element: <TendersPage /> },
+          {
+            index: true,
+            lazy: page(() => import('@/features/dashboard/DashboardPage'), 'DashboardPage'),
+          },
+          {
+            path: 'tenders',
+            lazy: page(() => import('@/features/tenders/TendersPage'), 'TendersPage'),
+          },
           // Статический сегмент раньше динамического: React Router v7 приоритизирует
           // статику, но порядок в дереве всё равно важен для читаемости.
-          { path: 'tenders/new', element: <TenderCreatePage /> },
-          { path: 'tenders/:tenderId', element: <TenderDetailPage /> },
-          { path: 'auctions', element: <AuctionsPage /> },
-          { path: 'auctions/:auctionId', element: <AuctionPage /> },
-          { path: 'contracts', element: <ContractsPage /> },
-          { path: 'procurement-plans', element: <ProcurementPlansPage /> },
-          { path: 'my-company', element: <MyCompanyPage /> },
+          {
+            path: 'tenders/new',
+            lazy: page(() => import('@/features/tenders/TenderCreatePage'), 'TenderCreatePage'),
+          },
+          {
+            path: 'tenders/:tenderId',
+            lazy: page(() => import('@/features/tenders/TenderDetailPage'), 'TenderDetailPage'),
+          },
+          {
+            path: 'auctions',
+            lazy: page(() => import('@/features/auction/AuctionsPage'), 'AuctionsPage'),
+          },
+          {
+            path: 'auctions/:auctionId',
+            lazy: page(() => import('@/features/auction/AuctionPage'), 'AuctionPage'),
+          },
+          {
+            path: 'contracts',
+            lazy: page(() => import('@/features/contracts/ContractsPage'), 'ContractsPage'),
+          },
+          {
+            path: 'procurement-plans',
+            lazy: page(() => import('@/features/planning/ProcurementPlansPage'), 'ProcurementPlansPage'),
+          },
+          {
+            path: 'my-company',
+            lazy: page(() => import('@/features/company/MyCompanyPage'), 'MyCompanyPage'),
+          },
           // Реестр компаний площадки — только platform_admin (сама страница
           // показывает заглушку остальным ролям, API отдаёт им 403).
-          { path: 'admin/companies', element: <CompaniesAdminPage /> },
-          { path: 'notifications', element: <NotificationsPage /> },
-          { path: 'profile', element: <ProfilePage /> },
+          {
+            path: 'admin/companies',
+            lazy: page(() => import('@/features/company/CompaniesAdminPage'), 'CompaniesAdminPage'),
+          },
+          {
+            path: 'notifications',
+            lazy: page(() => import('@/features/notifications/NotificationsPage'), 'NotificationsPage'),
+          },
+          {
+            path: 'profile',
+            lazy: page(() => import('@/features/auth/ProfilePage'), 'ProfilePage'),
+          },
           {
             path: 'settings',
-            element: <SettingsLayout />,
+            lazy: page(() => import('@/features/settings/SettingsLayout'), 'SettingsLayout'),
             children: [
               { index: true, element: <Navigate to="/settings/security" replace /> },
-              { path: 'security', element: <TwoFactorSecurityPage /> },
-              { path: 'api-keys', element: <ApiKeysPage /> },
-              { path: 'webhooks', element: <WebhooksPage /> },
-              { path: 'platform', element: <PlatformSettingsPage /> },
-              { path: 'role-permissions', element: <RolePermissionsPage /> },
+              {
+                path: 'security',
+                lazy: page(() => import('@/features/auth/TwoFactorSecurityPage'), 'TwoFactorSecurityPage'),
+              },
+              {
+                path: 'api-keys',
+                lazy: page(() => import('@/features/settings/ApiKeysPage'), 'ApiKeysPage'),
+              },
+              {
+                path: 'webhooks',
+                lazy: page(() => import('@/features/settings/WebhooksPage'), 'WebhooksPage'),
+              },
+              {
+                path: 'platform',
+                lazy: page(() => import('@/features/settings/PlatformSettingsPage'), 'PlatformSettingsPage'),
+              },
+              {
+                path: 'role-permissions',
+                lazy: page(() => import('@/features/settings/RolePermissionsPage'), 'RolePermissionsPage'),
+              },
             ],
           },
-          { path: 'users', element: <UsersPage /> },
+          { path: 'users', lazy: page(() => import('@/features/users/UsersPage'), 'UsersPage') },
         ],
       },
       { path: '*', element: <Navigate to="/tenders" replace /> },

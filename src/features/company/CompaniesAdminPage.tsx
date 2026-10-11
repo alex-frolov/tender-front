@@ -6,6 +6,7 @@ import {
   type CompaniesQuery,
   type Company,
 } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -25,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { useCursorPage, type CursorPageData } from '@/hooks/useCursorPage'
 import {
   COMPANY_STATUS_BADGE_VARIANTS,
@@ -117,7 +118,7 @@ export function CompaniesAdminPage() {
   const filtersKey = `${statusFilter}|${search}`
 
   const firstPageQuery = useQuery({
-    queryKey: ['companies', filtersKey, null],
+    queryKey: queryKeys.companies.page(filtersKey, null),
     queryFn: () => listCompanies(apiQuery),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
@@ -150,7 +151,7 @@ export function CompaniesAdminPage() {
 
   function fetchNextPage(cursor: string | null): Promise<CursorPageData<Company>> {
     return queryClient.fetchQuery({
-      queryKey: ['companies', filtersKey, cursor],
+      queryKey: queryKeys.companies.page(filtersKey, cursor),
       queryFn: () => listCompanies(cursor == null ? apiQuery : { ...apiQuery, cursor }),
     })
   }
@@ -164,9 +165,9 @@ export function CompaniesAdminPage() {
     onSuccess: () => {
       // Статус строки меняется на бэке — перечитываем страницу с нуля.
       primedFiltersKey.current = null
-      void queryClient.invalidateQueries({ queryKey: ['companies'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.companies.all })
       // Своя компания могла быть подтверждена/приостановлена — карточка тоже.
-      void queryClient.invalidateQueries({ queryKey: ['company'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.company })
     },
   })
 

@@ -22,12 +22,11 @@ import {
   type Webhook,
   type WebhookStatus,
 } from '@/api/webhooks'
+import { queryKeys } from '@/api/queryKeys'
 import { apiErrorMessage, isApiError } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { AccessDeniedCard } from './AccessDeniedCard'
 import { WebhookDeliveries } from './WebhookDeliveries'
-
-const WEBHOOKS_KEY = ['webhooks'] as const
 
 /** Подписи статуса подписки. */
 const STATUS_LABELS: Record<WebhookStatus, string> = {
@@ -168,10 +167,10 @@ export function WebhooksPage() {
   // Секрет, показанный один раз (после создания или ротации).
   const [issuedSecret, setIssuedSecret] = useState<string | null>(null)
 
-  const webhooksQuery = useQuery({ queryKey: WEBHOOKS_KEY, queryFn: listWebhooks, retry: false })
+  const webhooksQuery = useQuery({ queryKey: queryKeys.webhooks, queryFn: listWebhooks })
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: WEBHOOKS_KEY })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.webhooks })
   }
 
   const createMutation = useMutation({ mutationFn: createWebhook, onSuccess: invalidate })

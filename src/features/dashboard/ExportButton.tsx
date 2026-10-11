@@ -8,6 +8,7 @@ import {
   type ExportFormat,
   type ExportType,
 } from '@/api/exports'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -82,7 +83,7 @@ export function ExportButton({
   })
 
   const jobQuery = useQuery({
-    queryKey: ['export', jobId],
+    queryKey: queryKeys.exportJob(jobId),
     queryFn: () => getExport(jobId ?? ''),
     enabled: jobId != null,
     // Опрашиваем, пока файл готовится, но не бесконечно: задачу выполняет

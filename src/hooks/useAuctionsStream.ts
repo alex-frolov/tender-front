@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getAuctionsStream } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { apiErrorMessage } from '@/lib/errors'
 import type { AuctionLiveSnapshot, UseAuctionStreamResult } from '@/hooks/useAuctionStream'
 import { parseStreamJson, useMercureStream } from '@/hooks/useMercureStream'
@@ -33,11 +34,10 @@ export function useAuctionsStream(
   const { onSnapshot, enabled = true } = options
 
   const discoveryQuery = useQuery({
-    queryKey: ['auctions-stream'],
+    queryKey: queryKeys.auctionsStream,
     queryFn: getAuctionsStream,
     enabled,
     staleTime: 30_000,
-    retry: 1,
   })
 
   const discovery = discoveryQuery.data

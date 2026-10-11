@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClaim, listClaims, resolveClaim, type ClaimOutcome, type ClaimStage } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge, type BadgeVariant } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,7 +23,7 @@ import {
 } from '@/components/ui/table'
 import { apiErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
-import { formatMoney } from '@/lib/money'
+import { formatMoney, parseRublesToMinor } from '@/lib/money'
 import {
   CLAIM_OUTCOME_LABELS,
   CLAIM_STAGE_LABELS,
@@ -32,13 +33,6 @@ import {
 
 const STAGES: readonly ClaimStage[] = ['approve', 'in_work', 'done_by_performer']
 const OUTCOMES: readonly ClaimOutcome[] = ['rejected', 'settled', 'accepted', 'terminate_contract']
-
-/** Рубли из формы → minor units (целые копейки). */
-function toMinor(value: string): number | null {
-  const parsed = Number(value.replace(',', '.'))
-  if (!Number.isFinite(parsed) || value.trim() === '') return null
-  return Math.round(parsed * 100)
-}
 
 /**
  * Претензии по договору (GET/POST /claims, POST /claims/{id}/resolve).
@@ -57,7 +51,7 @@ export function ContractClaims({
 }) {
   const queryClient = useQueryClient()
   const claimsQuery = useQuery({
-    queryKey: ['claims', contractId],
+    queryKey: queryKeys.claims(contractId),
     queryFn: () => listClaims({ contract_id: contractId }),
   })
 
@@ -72,10 +66,10 @@ export function ContractClaims({
   const [error, setError] = useState<string | null>(null)
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['claims', contractId] })
-    void queryClient.invalidateQueries({ queryKey: ['contract', contractId] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.claims(contractId) })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.contract(contractId) })
     // Претензия двигает статус аукциона — список аукционов больше не актуален.
-    void queryClient.invalidateQueries({ queryKey: ['auctions'] })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.auctions })
   }
 
   const createMutation = useMutation({ mutationFn: createClaim, onSuccess: invalidate })
@@ -90,7 +84,7 @@ export function ContractClaims({
   async function handleCreate(event: FormEvent): Promise<void> {
     event.preventDefault()
     setError(null)
-    const amountMinor = toMinor(amount)
+    const amountMinor = parseRublesToMinor(amount)
     if (reason.trim() === '') {
       setError('Укажите основание претензии.')
       return

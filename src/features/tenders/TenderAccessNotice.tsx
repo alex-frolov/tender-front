@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Lock, ShieldCheck } from 'lucide-react'
 import { checkTenderAccess } from '@/api/planning'
+import { queryKeys } from '@/api/queryKeys'
 import { Card, CardContent } from '@/components/ui/card'
 import { apiErrorMessage } from '@/lib/errors'
 
@@ -21,7 +22,7 @@ const REASON_TEXT: Record<string, string> = {
 
 export function TenderAccessNotice({ tenderId }: { tenderId: string }) {
   const accessQuery = useQuery({
-    queryKey: ['tender-access', tenderId],
+    queryKey: queryKeys.tenderAccess(tenderId),
     queryFn: () => checkTenderAccess(tenderId),
     enabled: tenderId !== '',
   })

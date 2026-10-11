@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { getSupplier } from '@/api/planning'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,10 +37,9 @@ function TagList({ items }: { items: readonly string[] }) {
  */
 export function SupplierCard({ supplierId }: { supplierId: string }) {
   const supplierQuery = useQuery({
-    queryKey: ['supplier', supplierId],
+    queryKey: queryKeys.supplier(supplierId),
     queryFn: () => getSupplier(supplierId),
     enabled: supplierId !== '',
-    retry: false,
   })
 
   const supplier = supplierQuery.data

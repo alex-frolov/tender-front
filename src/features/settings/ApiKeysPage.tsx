@@ -20,13 +20,11 @@ import {
   type ApiKey,
   type ApiKeyScope,
 } from '@/api/apiKeys'
+import { queryKeys } from '@/api/queryKeys'
 import { apiErrorMessage, isApiError } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { AccessDeniedCard } from './AccessDeniedCard'
 import { API_KEY_SCOPES, API_KEY_SCOPE_LABELS } from './apiKeyScopes'
-
-/** Ключ кэша списка ключей. */
-const API_KEYS_KEY = ['api-keys'] as const
 
 /** Состояние ключа: отозван / просрочен / активен. */
 function keyState(key: ApiKey): { label: string; variant: 'success' | 'neutral' | 'danger' } {
@@ -95,10 +93,10 @@ export function ApiKeysPage() {
   const [rowError, setRowError] = useState<string | null>(null)
   const [issuedToken, setIssuedToken] = useState<string | null>(null)
 
-  const keysQuery = useQuery({ queryKey: API_KEYS_KEY, queryFn: listApiKeys, retry: false })
+  const keysQuery = useQuery({ queryKey: queryKeys.apiKeys, queryFn: listApiKeys })
 
   const invalidate = (): void => {
-    void queryClient.invalidateQueries({ queryKey: API_KEYS_KEY })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys })
   }
 
   const createMutation = useMutation({ mutationFn: createApiKey, onSuccess: invalidate })

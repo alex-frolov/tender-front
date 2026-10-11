@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Paperclip } from 'lucide-react'
 import { attachBidDocuments, type Bid } from '@/api/bids'
 import { listDocuments } from '@/api/documents'
+import { queryKeys } from '@/api/queryKeys'
 import { Button } from '@/components/ui/button'
 import { DocumentsCard } from '@/features/documents/DocumentsCard'
 import { apiErrorMessage } from '@/lib/errors'
@@ -29,7 +30,7 @@ export function BidDocuments({ bid, canEdit }: { bid: Bid; canEdit: boolean }) {
   const [attached, setAttached] = useState(false)
 
   const documentsQuery = useQuery({
-    queryKey: ['documents', 'bid', bidId],
+    queryKey: queryKeys.documents('bid', bidId),
     queryFn: () => listDocuments('bid', bidId),
     enabled: bidId !== '',
   })
@@ -37,7 +38,7 @@ export function BidDocuments({ bid, canEdit }: { bid: Bid; canEdit: boolean }) {
   const attachMutation = useMutation({
     mutationFn: (documentIds: string[]) => attachBidDocuments(bidId, documentIds),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['bids', bid.tender_id] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.bids.byTender(bid.tender_id) })
     },
   })
 

@@ -2,6 +2,7 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { getTender } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { FullPageSpinner } from '@/components/auth/ProtectedRoute'
 import { TenderStatusBadge } from '@/components/tender/TenderStatusBadge'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,7 @@ import {
 import { TenderBids } from '@/features/bids/TenderBids'
 import { TenderActions } from '@/features/tenders/TenderActions'
 import { TenderLots } from '@/features/tenders/TenderLots'
-import { useAuth } from '@/features/auth/AuthContext'
+import { useAuth } from '@/features/auth/useAuth'
 import { DocumentsCard } from '@/features/documents/DocumentsCard'
 import { TenderAccessNotice } from '@/features/tenders/TenderAccessNotice'
 import { TenderQuestions } from '@/features/tenders/TenderQuestions'
@@ -85,7 +86,7 @@ export function TenderDetailPage() {
   const publishError = (location.state as { publishError?: string } | null)?.publishError ?? null
 
   const tenderQuery = useQuery({
-    queryKey: ['tender', tenderId],
+    queryKey: queryKeys.tender(tenderId),
     queryFn: () => getTender(tenderId ?? ''),
     enabled: tenderId != null,
   })

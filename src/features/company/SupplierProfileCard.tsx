@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getSupplierProfile, updateSupplierProfile } from '@/api/endpoints'
+import { queryKeys } from '@/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,9 +11,6 @@ import {
   SUPPLIER_VERIFICATION_BADGE_VARIANTS,
   SUPPLIER_VERIFICATION_LABELS,
 } from '@/lib/company'
-
-/** Ключ кэша профиля поставщика. */
-const SUPPLIER_PROFILE_QUERY_KEY = ['supplier-profile'] as const
 
 /** Список через запятую → массив без пустых элементов и дублей. */
 function parseList(value: string): string[] {
@@ -50,7 +48,7 @@ function TagList({ items }: { items: readonly string[] }) {
 export function SupplierProfileCard({ canEdit }: { canEdit: boolean }) {
   const queryClient = useQueryClient()
   const profileQuery = useQuery({
-    queryKey: SUPPLIER_PROFILE_QUERY_KEY,
+    queryKey: queryKeys.supplierProfile,
     queryFn: getSupplierProfile,
     staleTime: 60_000,
   })
@@ -72,7 +70,7 @@ export function SupplierProfileCard({ canEdit }: { canEdit: boolean }) {
   const updateMutation = useMutation({
     mutationFn: updateSupplierProfile,
     onSuccess: (next) => {
-      queryClient.setQueryData(SUPPLIER_PROFILE_QUERY_KEY, next)
+      queryClient.setQueryData(queryKeys.supplierProfile, next)
     },
   })
 
